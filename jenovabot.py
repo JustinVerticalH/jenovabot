@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import json
 import os
 import random
 import time, datetime
@@ -40,10 +41,6 @@ async def alerts(ctx, arg):
             scheduled_event_alert_channel = channel
             await ctx.send(f"Event alert channel is set to {scheduled_event_alert_channel.mention}")
             break
-
-@bot.command()
-async def get_events(ctx):
-    await ctx.send(f"{ctx.guild.scheduled_events}")
 
 @bot.command()
 async def test(ctx):
