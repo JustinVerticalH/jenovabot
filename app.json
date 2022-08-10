@@ -1,0 +1,20 @@
+{
+  "name": "JENOVAbot",
+  "description": "This app has various helpful commands for SECTOR7.",
+  "keywords": [
+    "Discord",
+    "Python"
+  ],
+  "repository": "https://github.com/JustinVerticalH/jenovabot/",
+  "env": {
+    "SECRET_TOKEN": {
+      "description": "A secret token for verifying the user.",
+      "generator": "secret"
+    },
+    "WEB_CONCURRENCY": {
+      "description": "The number of processes to run.",
+      "value": "1"
+    }
+  }
+}
+  

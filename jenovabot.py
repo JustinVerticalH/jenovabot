@@ -10,12 +10,10 @@ token = os.getenv("TOKEN")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-
 def read(key: str) -> any:
     with open("values.json", "r+") as values_file:
         values = json.load(values_file)
     return values.get(key, None)
-
 
 def write(key: str, value: any):
     with open("values.json", "r+") as values_file:
@@ -34,7 +32,6 @@ async def on_message(message: discord.Message):
         await message.channel.send("Shut the fuck up you maggot. You clearly don't understand what makes a great video game. Elden Ring is a beautifully crafted masterpiece with a rich-open, beautiful graphics, fantastical gameplay, a great narrative, great quest design and it gives a ton of freedom and an actual challenge. Meanwhile all the other games that came out this year are overrated, mediocre games with boring, generic and repetitive gameplay, boring and uninteresting narratives and keep telling you what to do every 5 seconds. You and the people that support these kinds of doghit games are everything that is wrong this the gaming industry. These companies give you garbage and you guys eat it up and ask for more. Elden Ring is literally the only game that deserves to be called a true video game. Everything else is a joke and a scam. So fuck you, fuck all the people that pay for it, and fuck these companies that keep pumping these shitty mediocre kiddy games. I hope all of you fuckers die. Elden Ring and FromSoftware deserve all the praise and much more. They are single-handedly carrying the entire gaming industry with their state of the art games.")
     await bot.process_commands(message)
 
-
 @bot.event
 async def on_scheduled_event_create(event: discord.ScheduledEvent):
     for role in event.guild.roles:
@@ -42,7 +39,6 @@ async def on_scheduled_event_create(event: discord.ScheduledEvent):
             channel = await event.guild.fetch_channel(read("scheduled_event_alert_channel_id"))
             start_time = int(event.start_time.timestamp())
             await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
-
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
@@ -63,7 +59,6 @@ async def alerts(context: commands.Context, argument: str):
             return
     await context.send("Channel not found. Try again.")
 
-
 @bot.command()
 async def streampause(context: commands.Context):
     message = await context.send("React with 👍 when you're all set!")
@@ -71,10 +66,8 @@ async def streampause(context: commands.Context):
     write("streampause_message_id", message.id)
     write("streampause_author_id", context.author.id)
 
-
 @bot.command()
 async def test(context: commands.Context):
     await context.send("Testing!")
-
 
 bot.run(token)
