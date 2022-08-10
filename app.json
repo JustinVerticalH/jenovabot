@@ -15,6 +15,11 @@
       "description": "The number of processes to run.",
       "value": "1"
     }
-  }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
 }
   
