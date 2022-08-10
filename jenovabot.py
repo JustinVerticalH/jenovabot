@@ -31,19 +31,19 @@ async def on_scheduled_event_create(event: discord.ScheduledEvent):
             await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
 
 @bot.command()
-async def alerts(ctx, arg: str):
-    for channel in ctx.guild.channels:
-        if channel.name == arg or channel.mention == arg:
+async def alerts(context, argument: str):
+    for channel in context.guild.channels:
+        if channel.name == argument or channel.mention == argument:
             values["scheduled_event_alert_channel"] = channel.id
             values_file.seek(0)
             json.dump(values, values_file, indent = 2)
             values_file.truncate()
-            await ctx.send(f"Event alert channel is set to {channel.mention}")
+            await context.send(f"Event alert channel is set to {channel.mention}")
             return
-    await ctx.send("Channel not found. Try again.")
+    await context.send("Channel not found. Try again.")
 
 @bot.command()
-async def test(ctx):
-    await ctx.send("Testing!")
+async def test(context):
+    await context.send("Testing!")
 
 bot.run(token)
