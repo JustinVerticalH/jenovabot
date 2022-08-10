@@ -2,8 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
-import pytz
-import time, datetime
+import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,8 +28,8 @@ async def on_scheduled_event_create(event: discord.ScheduledEvent):
     for role in event.guild.roles:
         if role.name.replace("Ping", "") in event.name:
             channel = await event.guild.fetch_channel(values["scheduled_event_alert_channel"])
-            start_time = event.start_time.astimezone(pytz.timezone("US/Eastern")).strftime("%A %B %d %Y, %I:%M %p")
-            await channel.send(f"{event.name} is set for {start_time}! {role.mention}")
+            start_time = int(event.start_time.timestamp())
+            await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
 
 # Test this. Does the channel preference persist after the bot stops running?
 @bot.command()
