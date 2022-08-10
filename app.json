@@ -16,6 +16,13 @@
       "value": "1"
     }
   },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "standard-1x"
+    }
+  },
+  "image": "heroku/python",
   "buildpacks": [
     {
       "url": "heroku/python"
