@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
-import random
+import pytz
 import time, datetime
 from dotenv import load_dotenv
 
@@ -11,10 +11,12 @@ token = os.getenv("TOKEN")
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix = "!", intents = intents)
-scheduled_event_alert_channel = None
+
+with open("values.json", "r+") as values_file:
+    values = json.load(values_file)
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     if message.author == bot.user:
         return
     if "elden ring" in message.content.lower():
@@ -23,27 +25,28 @@ async def on_message(message):
 
 # Not working correctly yet. Fix this
 @bot.event
-async def on_scheduled_event_create(event):
-    await scheduled_event_alert_channel.send(f"{event.name} is set for {event.start_time}! {role.mention()}")
-    print("Made it here")
-    print(event.name)
+async def on_scheduled_event_create(event: discord.ScheduledEvent):
     for role in event.guild.roles:
-        if role.replace("Ping", "") in event.name:
-            await scheduled_event_alert_channel.send(f"{event.name} is set for {event.start_time}! {role.mention()}")
+        if role.name.replace("Ping", "") in event.name:
+            channel = await event.guild.fetch_channel(values["scheduled_event_alert_channel"])
+            start_time = event.start_time.astimezone(pytz.timezone("US/Eastern")).strftime("%A %B %d %Y, %I:%M %p")
+            await channel.send(f"{event.name} is set for {start_time}! {role.mention}")
 
 # Test this. Does the channel preference persist after the bot stops running?
 @bot.command()
-async def alerts(ctx, arg):
-    alert_channel_name = arg
-    alert_channel_id = "".join(x for x in arg if x.isdecimal())
+async def alerts(ctx, arg: str):
     for channel in ctx.guild.channels:
-        if channel.name == alert_channel_name or str(channel.id) == alert_channel_id:
-            scheduled_event_alert_channel = channel
-            await ctx.send(f"Event alert channel is set to {scheduled_event_alert_channel.mention}")
-            break
+        if channel.name == arg or channel.mention == arg:
+            values["scheduled_event_alert_channel"] = channel.id
+            values_file.seek(0)
+            json.dump(values, values_file, indent = 2)
+            values_file.truncate()
+            await ctx.send(f"Event alert channel is set to {channel.mention}")
+            return
+    await ctx.send("Channel not found. Try again.")
 
 @bot.command()
 async def test(ctx):
-    await ctx.send("Testing!!")
+    await ctx.send("Testing!")
 
 bot.run(token)
