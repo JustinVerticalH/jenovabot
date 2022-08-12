@@ -47,7 +47,7 @@ async def on_message(message: discord.Message):
 @bot.event
 async def on_scheduled_event_create(event: discord.ScheduledEvent):
     for role in event.guild.roles:
-        if role.name.replace("Ping", "") in event.name:
+        if role.name.replace(" Ping", "") in event.name:
             channel = await event.guild.fetch_channel(read("settings.json", "scheduled_event_alert_channel_id"))
             start_time = int(event.start_time.timestamp())
             await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
@@ -86,12 +86,17 @@ async def attempt_to_finish_streampause(reaction: discord.Reaction, user: discor
 
 @bot.command()
 async def alerts(context: commands.Context, argument: str):
-    for channel in context.guild.channels:
-        if argument in [channel.name, channel.mention]:
-            write("settings.json", "scheduled_event_alert_channel_id", channel.id)
-            await context.send(f"Event alert channel is set to {channel.mention}")
-            return
-    await context.send("Channel not found. Try again.")
+    if context.message.author.guild_permissions.manage_guild:
+        for channel in context.guild.channels:
+            if argument in [channel.name, channel.mention]:
+                write("settings.json", "scheduled_event_alert_channel_id", channel.id)
+                await context.send(f"Event alert channel is set to {channel.mention}")
+                return
+        await context.send("Channel not found. Try again.")
+        return
+    await context.send("User needs Manage Server permission to use this command.")
+    return
+    
 
 @bot.command()
 async def streampause(context: commands.Context):
