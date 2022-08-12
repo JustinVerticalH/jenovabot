@@ -88,7 +88,7 @@ async def attempt_to_finish_streampause(reaction: discord.Reaction, user: discor
 async def alerts(context: commands.Context, argument: str):
     for channel in context.guild.channels:
         if argument in [channel.name, channel.mention]:
-            write("scheduled_event_alert_channel_id", channel.id)
+            write("settings.json", "scheduled_event_alert_channel_id", channel.id)
             await context.send(f"Event alert channel is set to {channel.mention}")
             return
     await context.send("Channel not found. Try again.")
