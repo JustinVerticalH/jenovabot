@@ -1,1 +1,1 @@
-web: python jenovabot.py
+worker: python jenovabot.py
