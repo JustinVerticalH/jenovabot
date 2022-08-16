@@ -12,29 +12,46 @@ load_dotenv()
 token = os.getenv("TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="$", intents=intents)
 
 streampause_data: dict[discord.Message, discord.Member] = None
 
-def read(file_name: str, key: str) -> any:
+def read(file_name: str, *args: any):
+    with open(file_name, "r") as file:
+        position = json.load(file)
+    for arg in args:
+        if arg == None:
+            return None
+        position = position.get(str(arg), None)
+    return position
+    
+def write(file_name: str, value: any, *args: any):
     with open(file_name, "r+") as file:
         file_json = json.load(file)
-    return file_json.get(key, None)
+        position = file_json
+        for arg in args:
+            print(position)
+            if position.get(str(arg)) == None:
+                position[str(arg)] = dict()
+            previous_position = position
+            position = position.get(str(arg))
 
-def write(file_name: str, key: str, value: any):
-    with open(file_name, "r+") as file:
-        file_json = json.load(file)
-        file_json[key] = value
+        previous_position[str(arg)] = value
         file.seek(0)
         json.dump(file_json, file, indent=2)
         file.truncate()
 
 @bot.event
 async def on_ready():
-    reminders_list = map(tuple, read("reminders.json", "reminders"))
-    reminders = set(reminders_list if reminders_list != None else [])
-    for reminder in reminders:
-        await process_reminder(*reminder)
+    for guild in bot.guilds:
+        for file in ["settings.json", "reminders.json"]:
+            if read(file, guild.id) == None:
+                write(file, {}, guild.id)
+        reminders_list = map(tuple, read("reminders.json", guild.id))
+        reminders = set(reminders_list if reminders_list != None else [])
+        for reminder in reminders:
+            reminder = (await bot.fetch_user(reminder[0]), await bot.fetch_channel(reminder[1]), *reminder[2:])
+            await process_reminder(*reminder, None)
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -48,7 +65,7 @@ async def on_message(message: discord.Message):
 async def on_scheduled_event_create(event: discord.ScheduledEvent):
     for role in event.guild.roles:
         if role.name.replace(" Ping", "") in event.name:
-            channel = await event.guild.fetch_channel(read("settings.json", "scheduled_event_alert_channel_id"))
+            channel = await event.guild.fetch_channel(read("settings.json", event.guild, "scheduled_event_alert_channel_id"))
             start_time = int(event.start_time.timestamp())
             await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
 
@@ -63,7 +80,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     global streampause_data
     if streampause_data is not None:
         voice_channel = before.channel if after.channel is None else after.channel if before.channel is None else None
-        reaction = next(reaction for reaction in streampause_data["message"].reactions if reaction.emoji == "👍")
+        reaction = discord.utils.get(streampause_data["message"].reactions, emoji="👍")
 
         await attempt_to_finish_streampause(reaction, member, voice_channel)
 
@@ -86,10 +103,11 @@ async def attempt_to_finish_streampause(reaction: discord.Reaction, user: discor
 
 @bot.command()
 async def alerts(context: commands.Context, argument: str):
+    print("starting alerts")
     if context.message.author.guild_permissions.manage_guild:
         for channel in context.guild.channels:
             if argument in [channel.name, channel.mention]:
-                write("settings.json", "scheduled_event_alert_channel_id", channel.id)
+                write("settings.json", channel.id, context.guild.id, "scheduled_event_alert_channel_id")
                 await context.send(f"Event alert channel is set to {channel.mention}")
                 return
         await context.send("Channel not found. Try again.")
@@ -117,38 +135,42 @@ async def streampause(context: commands.Context):
     await message.add_reaction("👍")
 
 @bot.command()
-async def remindme(context: commands.Context, time: str, message: str):
+async def remindme(context: commands.Context, time: str, message_str: str):
     # Determine the amount of time based on the time inputted
-    timer_parameters = re.search("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time).groups()
-    num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t == None else t), timer_parameters))
-    await context.message.add_reaction("👍")
+    timer_parameters = re.fullmatch("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
+    if timer_parameters == None:
+        timer_parameters = re.search("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
+        num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t == None else t), timer_parameters.groups()))
+        
+        correct_time_string = re.sub("0.", "", f"{num_days}d{num_hours}h{num_minutes}m{num_seconds}s")
+        await context.send(f"Time string is not formatted correctly; did you mean to type {correct_time_string}?")
+        return
+
+    num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t == None else t), timer_parameters.groups()))
 
     date_time = datetime.datetime.now() + datetime.timedelta(days = num_days, hours = num_hours, minutes = num_minutes, seconds = num_seconds)
     timestamp = int(round(date_time.timestamp()))
-    await process_reminder(context.message.author.id, context.message.channel.id, timestamp, message)
 
-@bot.command()
-async def process_reminder(author_id: int, channel_id: int, timestamp: int, message: str):
+    await process_reminder(context.message.author, context.message.channel, timestamp, message_str, context.message)
+
+async def process_reminder(author: discord.Member, channel: discord.TextChannel, timestamp: int, message_str: str, message: Optional[discord.Message]):
     # Add the new reminder to the list of reminders and write the updated list into settings.json
-    reminders_list = map(tuple, read("reminders.json", "reminders"))
+    reminders_list = map(tuple, read("reminders.json", channel.guild.id))
     reminders = set(reminders_list if reminders_list != None else [])
     
-    reminders.add(tuple((author_id, channel_id, timestamp, message)))
-    write("reminders.json", "reminders", list(reminders))
+    reminders.add((author.id, channel.id, timestamp, message_str))
+    write("reminders.json", list(reminders), channel.guild.id)
+
+    if message:
+        await message.add_reaction("👍")
 
     # Wait until the correct time, send a message to remind the user, and remove the reminder from the list
     sleep_time = timestamp - int(round(datetime.datetime.now().timestamp()))
     if sleep_time > 0:
         await asyncio.sleep(sleep_time)
-    channel = await bot.fetch_channel(channel_id)
-    author = await bot.fetch_user(author_id)
-    await channel.send(f"{author.mention} {message}")
+    await channel.send(f"{author.mention} {message_str}")
 
-    reminders.remove(tuple((author_id, channel_id, timestamp, message)))
-    write("reminders.json", "reminders", list(reminders))
-
-@bot.command()
-async def test(context: commands.Context):
-    await context.send("Testing!")
+    reminders.remove((author.id, channel.id, timestamp, message_str))
+    write("reminders.json", list(reminders), channel.guild.id)
 
 bot.run(token)
