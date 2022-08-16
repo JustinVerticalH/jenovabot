@@ -12,7 +12,7 @@ load_dotenv()
 token = os.getenv("TOKEN")
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="$", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 streampause_data: dict[discord.Message, discord.Member] = None
 
