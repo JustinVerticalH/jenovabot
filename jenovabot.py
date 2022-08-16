@@ -11,8 +11,9 @@ from dotenv import load_dotenv
 load_dotenv()
 token = os.getenv("TOKEN")
 
+command_prefix = os.getenv("PREFIX")
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, intents=intents)
 
 streampause_data: dict[discord.Message, discord.Member] = None
 
@@ -31,7 +32,7 @@ def write(file_name: str, value: any, *args: any):
         position = file_json
         for arg in args:
             print(position)
-            if position.get(str(arg)) == None:
+            if position.get(str(arg)) is None:
                 position[str(arg)] = dict()
             previous_position = position
             position = position.get(str(arg))
@@ -45,10 +46,10 @@ def write(file_name: str, value: any, *args: any):
 async def on_ready():
     for guild in bot.guilds:
         for file in ["settings.json", "reminders.json"]:
-            if read(file, guild.id) == None:
+            if read(file, guild.id) is None:
                 write(file, {}, guild.id)
         reminders_list = map(tuple, read("reminders.json", guild.id))
-        reminders = set(reminders_list if reminders_list != None else [])
+        reminders = set(reminders_list if reminders_list is not None else [])
         for reminder in reminders:
             reminder = (await bot.fetch_user(reminder[0]), await bot.fetch_channel(reminder[1]), *reminder[2:])
             await process_reminder(*reminder, None)
@@ -140,13 +141,13 @@ async def remindme(context: commands.Context, time: str, message_str: str):
     timer_parameters = re.fullmatch("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
     if timer_parameters == None:
         timer_parameters = re.search("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
-        num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t == None else t), timer_parameters.groups()))
+        num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups()))
         
         correct_time_string = re.sub("0.", "", f"{num_days}d{num_hours}h{num_minutes}m{num_seconds}s")
         await context.send(f"Time string is not formatted correctly; did you mean to type {correct_time_string}?")
         return
 
-    num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t == None else t), timer_parameters.groups()))
+    num_days, num_hours, num_minutes, num_seconds = tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups()))
 
     date_time = datetime.datetime.now() + datetime.timedelta(days = num_days, hours = num_hours, minutes = num_minutes, seconds = num_seconds)
     timestamp = int(round(date_time.timestamp()))
@@ -156,7 +157,7 @@ async def remindme(context: commands.Context, time: str, message_str: str):
 async def process_reminder(author: discord.Member, channel: discord.TextChannel, timestamp: int, message_str: str, message: Optional[discord.Message]):
     # Add the new reminder to the list of reminders and write the updated list into settings.json
     reminders_list = map(tuple, read("reminders.json", channel.guild.id))
-    reminders = set(reminders_list if reminders_list != None else [])
+    reminders = set(reminders_list if reminders_list is not None else [])
     
     reminders.add((author.id, channel.id, timestamp, message_str))
     write("reminders.json", list(reminders), channel.guild.id)
