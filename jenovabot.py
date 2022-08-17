@@ -68,7 +68,7 @@ async def on_message(message: discord.Message):
 async def on_scheduled_event_create(event: discord.ScheduledEvent):
     for role in event.guild.roles:
         if role.name.replace(" Ping", "") in event.name:
-            channel = await event.guild.fetch_channel(read("settings.json", event.guild, "scheduled_event_alert_channel_id"))
+            channel = await event.guild.fetch_channel(read("settings.json", event.guild.id, "scheduled_event_alert_channel_id"))
             start_time = int(event.start_time.timestamp())
             await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
 
