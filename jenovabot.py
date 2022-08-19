@@ -1,4 +1,4 @@
-import asyncio, datetime, discord, os, re, pytz
+import asyncio, datetime, discord, os, re
 
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -154,6 +154,8 @@ async def process_reminder(author: discord.Member, channel: discord.TextChannel,
     reminders.remove((author.id, channel.id, command_message.id, timestamp, reminder))
     write("reminders.json", list(reminders), channel.guild.id)
 
+
+# ANNOUNCEMENTS #
 @bot.command()
 async def announcements(context: commands.Context, argument: str):
     if context.message.author.guild_permissions.manage_guild:
@@ -169,16 +171,15 @@ async def announcements(context: commands.Context, argument: str):
 
 @tasks.loop(minutes=1)
 async def periodic_announcements():
-    now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
+    now = datetime.datetime.now()
     for guild in bot.guilds:
         channel_id = read("settings.json", guild.id, "periodic_announcement_channel_id")
         if channel_id is not None:
             channel = await bot.fetch_channel(channel_id)
-            #if now.weekday == 4 and now.hour == 15 and now.minute == 0:
-                #await channel.send(file = discord.File("ninja_troll.png"))
-            #if now.day == 1 and now.hour == 0 and now.minute == 0:
-            if now.weekday() == 4 and now.minute == 49:
-                await channel.send(f"Today is Friday, and it is minute :49. Testing works", file = discord.File("first_of_the_month.mov"))
+            if now.weekday() == 4 and now.hour == 21 and now.minute == 0: # Friday, 5:00 PM EST
+                await channel.send(file = discord.File("ninja_troll.png"))
+            if now.day == 1 and now.hour == 4 and now.minute == 0: # 1st day of the month, 12:00 AM EST
+                await channel.send(file = discord.File("first_of_the_month.mov"))
 
 periodic_announcements.start()
 bot.run(token)

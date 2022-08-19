@@ -3,6 +3,7 @@
     "scheduled_event_alert_channel_id": 889198569645539388
   },
   "1005336323873321003": {
-    "scheduled_event_alert_channel_id": 1005720333053075486
+    "scheduled_event_alert_channel_id": 1005720333053075486,
+    "periodic_announcement_channel_id": 1005720333053075486
   }
 }
