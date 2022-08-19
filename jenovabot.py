@@ -1,6 +1,6 @@
-import asyncio, datetime, discord, os, re
+import asyncio, datetime, discord, os, re, pytz
 
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from ioutils import read, write
 from typing import Optional
@@ -36,7 +36,6 @@ async def on_scheduled_event_create(event: discord.ScheduledEvent):
 
 @bot.command()
 async def alerts(context: commands.Context, argument: str):
-    print("starting alerts")
     if context.message.author.guild_permissions.manage_guild:
         for channel in context.guild.channels:
             if argument in [channel.name, channel.mention]:
@@ -116,7 +115,7 @@ async def on_ready():
             timestamp, reminder_str = reminder[3:]
 
             await process_reminder(author, channel, command_message, timestamp, reminder_str)
-
+        
 @bot.command()
 async def remindme(context: commands.Context, time: str, reminder: str):
     # Determine the amount of time based on the time inputted
@@ -155,5 +154,31 @@ async def process_reminder(author: discord.Member, channel: discord.TextChannel,
     reminders.remove((author.id, channel.id, command_message.id, timestamp, reminder))
     write("reminders.json", list(reminders), channel.guild.id)
 
+@bot.command()
+async def announcements(context: commands.Context, argument: str):
+    if context.message.author.guild_permissions.manage_guild:
+        for channel in context.guild.channels:
+            if argument in [channel.name, channel.mention]:
+                write("settings.json", channel.id, context.guild.id, "periodic_announcement_channel_id")
+                await context.send(f"Periodic announcement channel is set to {channel.mention}")
+                return
+        await context.send("Channel not found. Try again.")
+        return
+    await context.send("User needs Manage Server permission to use this command.")
+    return
 
+@tasks.loop(minutes=1)
+async def periodic_announcements():
+    now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
+    for guild in bot.guilds:
+        channel_id = read("settings.json", guild.id, "periodic_announcement_channel_id")
+        if channel_id is not None:
+            channel = await bot.fetch_channel(channel_id)
+            #if now.weekday == 4 and now.hour == 15 and now.minute == 0:
+                #await channel.send(file = discord.File("ninja_troll.png"))
+            #if now.day == 1 and now.hour == 0 and now.minute == 0:
+            if now.weekday() == 4 and now.minute == 49:
+                await channel.send(f"Today is Friday, and it is minute :49. Testing works", file = discord.File("first_of_the_month.mov"))
+
+periodic_announcements.start()
 bot.run(token)
