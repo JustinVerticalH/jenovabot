@@ -110,8 +110,12 @@ async def on_ready():
         reminders_list = map(tuple, read("reminders.json", guild.id))
         reminders = set(reminders_list if reminders_list is not None else [])
         for reminder in reminders:
-            reminder = (await bot.fetch_user(reminder[0]), await bot.fetch_channel(reminder[1]), *reminder[2:])
-            await process_reminder(*reminder, None)
+            author = await bot.fetch_user(reminder[0])
+            channel = await bot.fetch_channel(reminder[1])
+            command_message = await channel.fetch_message(reminder[2])
+            timestamp, reminder_str = reminder[3:]
+
+            await process_reminder(author, channel, command_message, timestamp, reminder_str)
 
 @bot.command()
 async def remindme(context: commands.Context, time: str, reminder: str):
@@ -130,18 +134,17 @@ async def remindme(context: commands.Context, time: str, reminder: str):
     date_time = datetime.datetime.now() + datetime.timedelta(days = num_days, hours = num_hours, minutes = num_minutes, seconds = num_seconds)
     timestamp = int(round(date_time.timestamp()))
 
-    await process_reminder(context.message.author, context.message.channel, timestamp, reminder, context.message)
+    await process_reminder(context.message.author, context.message.channel, context.message, timestamp, reminder)
 
-async def process_reminder(author: discord.Member, channel: discord.TextChannel, timestamp: int, reminder: str, command_message: Optional[discord.Message]):
-    # Add the new reminder to the list of reminders and write the updated list into settings.json
+async def process_reminder(author: discord.Member, channel: discord.TextChannel, command_message: discord.Message, timestamp: int, reminder: str):
+    # Add the new reminder to the list of reminders and write the updated list into reminders.json
     reminders_list = map(tuple, read("reminders.json", channel.guild.id))
     reminders = set(reminders_list if reminders_list is not None else [])
     
-    reminders.add((author.id, channel.id, timestamp, reminder))
+    reminders.add((author.id, channel.id, command_message.id, timestamp, reminder))
     write("reminders.json", list(reminders), channel.guild.id)
 
-    if command_message:
-        await command_message.add_reaction("👍")
+    await command_message.add_reaction("👍")
 
     # Wait until the correct time, send a message to remind the user, and remove the reminder from the list
     sleep_time = timestamp - int(round(datetime.datetime.now().timestamp()))
@@ -149,7 +152,7 @@ async def process_reminder(author: discord.Member, channel: discord.TextChannel,
         await asyncio.sleep(sleep_time)
     await command_message.reply(f"{author.mention} {reminder}")
 
-    reminders.remove((author.id, channel.id, timestamp, reminder))
+    reminders.remove((author.id, channel.id, command_message.id, timestamp, reminder))
     write("reminders.json", list(reminders), channel.guild.id)
 
 
