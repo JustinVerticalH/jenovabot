@@ -1,4 +1,4 @@
-import datetime, os, re
+import datetime, os, pytz, re
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from ioutils import read, write
@@ -187,7 +187,6 @@ class Reminders(commands.Cog, name="Reminders"):
 class Announcements(commands.Cog, name="Periodic Announcements"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.LOCAL_TIMEZONE = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
         self.periodic_announcements.start()
 
     @commands.command()
@@ -205,8 +204,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @tasks.loop(minutes=0.2)
     async def periodic_announcements(self):
-        now = datetime.datetime.now(self.LOCAL_TIMEZONE)
-        print(f"Current time: {now.hour:02d}:{now.minute:02d} {now.tzname()}")
+        now = datetime.datetime.now(pytz.timezone("US/Eastern"))
         for guild in self.bot.guilds:
             channel_id = read("settings.json", guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
