@@ -14,7 +14,6 @@ def write(file_name: str, value: any, *path: list[str | int]):
         file_json = json.load(file)
         position = file_json
         for key in path:
-            print(position)
             if position.get(str(key)) is None:
                 position[str(key)] = dict()
             previous_position = position
