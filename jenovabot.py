@@ -2,7 +2,7 @@ import datetime, os, pytz, re
 import json
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from ioutils import read_sql, write_sql
+from ioutils import read_file, read_sql, write_sql
 from typing import Optional
 
 import discord
@@ -24,7 +24,7 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
     async def on_message(self, message: discord.Message):
         if message.author == bot.user:
             return
-        copypastas = read("copypastas.json")
+        copypastas = read_file("copypastas.json")
         for phrase in copypastas:
             if phrase in message.content.lower():
                 await message.channel.send(copypastas[phrase])
