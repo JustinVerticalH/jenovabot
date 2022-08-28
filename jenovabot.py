@@ -145,7 +145,8 @@ class Reminders(commands.Cog, name="Reminders"):
         self.process_reminders.start()
  
     @commands.command()
-    async def remindme(self, context: commands.Context, time: str, reminder_str: str):
+    async def remindme(self, context: commands.Context, time: str, reminder_str: str = ""):
+ 
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
         if not is_valid:
@@ -158,10 +159,12 @@ class Reminders(commands.Cog, name="Reminders"):
         reminder_datetime = datetime.datetime.now() + datetime.timedelta(days = num_days, hours = num_hours, minutes = num_minutes, seconds = num_seconds)
 
         reminder = Reminder(context.message, reminder_datetime, reminder_str)
+        if context.guild.id not in self.reminders:
+            self.reminders[context.guild.id] = set()
         self.reminders[context.guild.id].add(reminder)
         
         await context.message.add_reaction("👍")
-    
+
     @staticmethod
     def get_datetime_parameters(time: str):
         is_valid = True
