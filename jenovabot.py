@@ -1,7 +1,9 @@
 import datetime, os, pytz, re
+import json, psycopg2
+import pandas as pd
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from ioutils import read, write
+from ioutils import read, write, read_sql, write_sql
 from typing import Optional
 
 import discord
@@ -14,7 +16,6 @@ token = os.getenv("TOKEN")
 command_prefix = os.getenv("PREFIX")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, intents=intents)
-
 
 class Copypastas(commands.Cog, name="Message Copypastas"):
     def __init__(self, bot: commands.Bot):
@@ -38,7 +39,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
         for role in event.guild.roles:
             if role.name.replace(" Ping", "") in event.name:
-                channel = await event.guild.fetch_channel(read("settings.json", event.guild.id, "scheduled_event_alert_channel_id"))
+                channel = await event.guild.fetch_channel(read_sql("settings", event.guild.id, "scheduled_event_alert_channel_id"))
                 start_time = int(event.start_time.timestamp())
                 await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
 
@@ -47,7 +48,8 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         if context.message.author.guild_permissions.manage_guild:
             for channel in context.guild.channels:
                 if argument in [channel.name, channel.mention]:
-                    write("settings.json", channel.id, context.guild.id, "scheduled_event_alert_channel_id")
+                    #write("settings.json", channel.id, context.guild.id, "scheduled_event_alert_channel_id")
+                    write_sql("settings", context.guild.id, "scheduled_event_alert_channel_id", channel.id)
                     await context.send(f"Event alert channel is set to {channel.mention}")
                     return
             await context.send("Channel not found. Try again.")
@@ -110,14 +112,15 @@ class Reminder:
     reminder_datetime: datetime.datetime
     reminder_str: str
 
-    def to_json(self) -> dict[str, int | float | str]:
-        return {
+    def to_json(self) -> str:
+        json_obj = {
             "channel_id": self.command_message.channel.id,
             "command_message_id": self.command_message.id,
             "reminder_timestamp": self.reminder_datetime.timestamp(),
             "reminder_str": self.reminder_str
         }
-    
+        return json.dumps(json_obj)
+
     @staticmethod
     async def from_json(bot: commands.Bot, json_obj: dict[str, int | float | str]):
         channel = bot.get_channel(json_obj["channel_id"])
@@ -132,18 +135,16 @@ class Reminder:
 class Reminders(commands.Cog, name="Reminders"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.reminders: dict[int, set[Reminder]]
+        self.reminders: dict[int, set[Reminder]] = {}
     
     @commands.Cog.listener()
     async def on_ready(self):
-        self.reminders = {}
         for guild in self.bot.guilds:
-            if read("reminders.json", guild.id) is None:
-                write("reminders.json", [], guild.id)
-            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_obj) for json_obj in read("reminders.json", guild.id)}
-        
+            if read_sql("reminders", guild.id, "reminders") is None:
+                write_sql("reminders", guild.id, "reminders", None)
+            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("reminders", guild.id, "reminders")}
         self.process_reminders.start()
-
+ 
     @commands.command()
     async def remindme(self, context: commands.Context, time: str, reminder_str: str):
         # Determine the amount of time based on the time inputted
@@ -181,7 +182,7 @@ class Reminders(commands.Cog, name="Reminders"):
                 if reminder.reminder_datetime <= datetime.datetime.now():
                     await reminder.command_message.reply(reminder.reminder_str)
                     self.reminders[guild.id].remove(reminder)
-            write("reminders.json", [reminder.to_json() for reminder in self.reminders[guild.id]], guild.id)
+            write_sql("reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
 
 
 class Announcements(commands.Cog, name="Periodic Announcements"):
@@ -194,7 +195,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         if context.message.author.guild_permissions.manage_guild:
             for channel in context.guild.channels:
                 if argument in [channel.name, channel.mention]:
-                    write("settings.json", channel.id, context.guild.id, "periodic_announcement_channel_id")
+                    write_sql("settings", context.guild.id, "periodic_announcement_channel_id", channel.id)
                     await context.send(f"Periodic announcement channel is set to {channel.mention}")
                     return
             await context.send("Channel not found. Try again.")
@@ -206,12 +207,12 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     async def periodic_announcements(self):
         now = datetime.datetime.now(pytz.timezone("US/Eastern"))
         for guild in self.bot.guilds:
-            channel_id = read("settings.json", guild.id, "periodic_announcement_channel_id")
+            channel_id = read_sql("settings", guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = bot.get_channel(channel_id)
-                if now.weekday() == 4 and now.hour == 17 and now.minute == 0: # Friday, 5:00 PM EST
+                if now.weekday() == 4 and now.hour == 17 and now.minute == 0 and now.second < 12: # Friday, 5:00 PM EST
                     await channel.send(file = discord.File("ninja_troll.png"))
-                if now.day == 1 and now.hour == 0 and now.minute == 0: # 1st day of the month, 12:00 AM EST
+                if now.day == 1 and now.hour == 0 and now.minute == 0 and now.second < 12: # 1st day of the month, 12:00 AM EST
                     await channel.send(file = discord.File("first_of_the_month.mov"))
 
 
