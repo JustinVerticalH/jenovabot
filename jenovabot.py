@@ -61,7 +61,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
 class StreamPause(commands.Cog, name="Stream Pause"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.streampause_data: dict[str, discord.Message | discord.Member] = None
+        self.streampause_data: dict[str, commands.Context | discord.Message] = None
     
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
@@ -70,11 +70,14 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        if self.streampause_data is not None:
-            voice_channel = before.channel if after.channel is None else after.channel if before.channel is None else None
-            reaction = discord.utils.get(self.streampause_data["message"].reactions, emoji="👍")
+        if self.streampause_data is None:
+            return
+        
+        voice_channel = before.channel if after.channel is None else after.channel if before.channel is None else None
+        message = await self.streampause_data["context"].fetch_message(self.streampause_data["message"].id)
+        reaction = discord.utils.get(message.reactions, emoji="👍")
 
-            await self.attempt_to_finish_streampause(reaction, member, voice_channel)
+        await self.attempt_to_finish_streampause(reaction, member, voice_channel)
 
     @commands.command()
     async def streampause(self, context: commands.Context):
@@ -82,14 +85,12 @@ class StreamPause(commands.Cog, name="Stream Pause"):
             await context.send("This command is only usable inside a voice channel.")
             return
 
-        message = await context.send("React with 👍 when you're all set!")
-
         self.streampause_data = {
-            "message": message,
-            "author": context.author
+            "context": context,
+            "message": await context.send("React with 👍 when you're all set!")
         }
 
-        await message.add_reaction("👍")
+        await self.streampause_data["message"].add_reaction("👍")
 
     async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
         if user.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
@@ -99,8 +100,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         vc_members = set(voice_channel.members)
 
         if reacted_members & vc_members == vc_members:
-            original_author = self.streampause_data["author"]
-            await reaction.message.channel.send(f"{original_author.mention} Everyone's here!")
+            await reaction.message.channel.send(f"{self.streampause_data['context'].author.mention} Everyone's here!")
 
             await reaction.message.delete()
             self.streampause_data = None
