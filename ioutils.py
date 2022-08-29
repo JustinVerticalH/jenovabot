@@ -21,7 +21,7 @@ def read_sql(table_name: str, guild_id: int, column_name: str):
         return None
     cursor.execute(query)
 
-    results = cursor.fetchall
+    results = cursor.fetchall()
     results = results[0][0]
     cursor.close()
     conn.close()
