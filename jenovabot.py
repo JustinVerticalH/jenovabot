@@ -38,7 +38,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
         for role in event.guild.roles:
             if role.name.replace(" Ping", "") in event.name:
-                channel = await event.guild.fetch_channel(read_sql("settings", event.guild.id, "scheduled_event_alert_channel_id"))
+                channel = await event.guild.fetch_channel(read_sql("test_settings", event.guild.id, "scheduled_event_alert_channel_id"))
                 start_time = int(event.start_time.timestamp())
                 await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
 
@@ -48,7 +48,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             for channel in context.guild.channels:
                 if argument in [channel.name, channel.mention]:
                     #write("settings.json", channel.id, context.guild.id, "scheduled_event_alert_channel_id")
-                    write_sql("settings", context.guild.id, "scheduled_event_alert_channel_id", channel.id)
+                    write_sql("test_settings", context.guild.id, "scheduled_event_alert_channel_id", channel.id)
                     await context.send(f"Event alert channel is set to {channel.mention}")
                     return
             await context.send("Channel not found. Try again.")
@@ -138,14 +138,20 @@ class Reminders(commands.Cog, name="Reminders"):
     @commands.Cog.listener()
     async def on_ready(self):
         for guild in self.bot.guilds:
-            if read_sql("reminders", guild.id, "reminders") is None:
-                write_sql("reminders", guild.id, "reminders", None)
-            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("reminders", guild.id, "reminders")}
+            if read_sql("test_reminders", guild.id, "reminders") is None:
+                write_sql("test_reminders", guild.id, "reminders", "array[[]]::json[]")
+            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("test_reminders", guild.id, "reminders")}
         self.process_reminders.start()
  
     @commands.command()
     async def remindme(self, context: commands.Context, time: str, reminder_str: str = ""):
- 
+        if time == "viewall":
+            await Reminders.remindme_viewall(self, context)
+            return
+        #if time == "cancel":
+        #    await Reminders.remindme_cancel(self, context, int(reminder_str))
+        #    return
+
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
         if not is_valid:
@@ -161,9 +167,18 @@ class Reminders(commands.Cog, name="Reminders"):
         if context.guild.id not in self.reminders:
             self.reminders[context.guild.id] = set()
         self.reminders[context.guild.id].add(reminder)
-        
+        write_sql("test_reminders", context.guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[context.guild.id]]}::json[]")
         await context.message.add_reaction("👍")
 
+    async def remindme_viewall(self, context: commands.Context):
+        reminder_str = ""
+        for i, reminder in enumerate(self.reminders[context.guild.id]):
+            reminder_str += f"""{i+1}. Reminder in {reminder.command_message.channel.mention} by {reminder.command_message.author.name} for <t:{int(reminder.reminder_datetime.timestamp())}>: "{reminder.reminder_str}"\n"""
+        await context.send(reminder_str)
+
+    #async def remindme_cancel(self, context: commands.Context, index: int):
+    ##TODO: This function
+    
     @staticmethod
     def get_datetime_parameters(time: str):
         is_valid = True
@@ -185,7 +200,7 @@ class Reminders(commands.Cog, name="Reminders"):
                     await reminder.command_message.reply(reminder.reminder_str)
                     self.reminders[guild.id].remove(reminder)
             if reminders != self.reminders[guild.id]:
-                write_sql("reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
+                write_sql("test_reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
 
 
 class Announcements(commands.Cog, name="Periodic Announcements"):
@@ -198,7 +213,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         if context.message.author.guild_permissions.manage_guild:
             for channel in context.guild.channels:
                 if argument in [channel.name, channel.mention]:
-                    write_sql("settings", context.guild.id, "periodic_announcement_channel_id", channel.id)
+                    write_sql("test_settings", context.guild.id, "periodic_announcement_channel_id", channel.id)
                     await context.send(f"Periodic announcement channel is set to {channel.mention}")
                     return
             await context.send("Channel not found. Try again.")
@@ -210,7 +225,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     async def periodic_announcements(self):
         now = datetime.datetime.now(pytz.timezone("US/Eastern"))
         for guild in self.bot.guilds:
-            channel_id = read_sql("settings", guild.id, "periodic_announcement_channel_id")
+            channel_id = read_sql("test_settings", guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = bot.get_channel(channel_id)
                 if now.weekday() == 4 and now.hour == 17 and now.minute == 0 and now.second < 12: # Friday, 5:00 PM EST

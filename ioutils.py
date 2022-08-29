@@ -12,16 +12,13 @@ def read_file(file_name: str, *path: list[str | int]):
 def read_sql(table_name: str, guild_id: int, column_name: str):
     database_url = os.getenv("DATABASE_URL")
     conn = psycopg2.connect(database_url, sslmode="require")
-    exists_query = f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE guild_id = {guild_id})";
     query = f"SELECT {column_name} FROM {table_name} WHERE guild_id = {guild_id};"
     cursor = conn.cursor()
-
-    cursor.execute(exists_query)
-    if cursor.fetchall() == []:
-        return None
+    
     cursor.execute(query)
-
     results = cursor.fetchall()
+    if results == []:
+        return None
     results = results[0][0]
     cursor.close()
     conn.close()
