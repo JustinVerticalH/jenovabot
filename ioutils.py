@@ -1,6 +1,6 @@
 import json, os, psycopg2
 
-def read_file(file_name: str, *path: list[str | int]):
+def read_json(file_name: str, *path: list[str | int]):
     with open(file_name, "r") as file:
         position = json.load(file)
     for key in path:
@@ -11,26 +11,26 @@ def read_file(file_name: str, *path: list[str | int]):
 
 def read_sql(table_name: str, guild_id: int, column_name: str):
     database_url = os.getenv("DATABASE_URL")
-    conn = psycopg2.connect(database_url, sslmode="require")
-    query = f"SELECT {column_name} FROM {table_name} WHERE guild_id = {guild_id};"
-    cursor = conn.cursor()
-    
-    cursor.execute(query)
-    results = cursor.fetchall()
-    if results == []:
-        return None
-    results = results[0][0]
-    cursor.close()
-    conn.close()
-    return results
+    query = f"SELECT {column_name} FROM {table_name} WHERE guild_id={guild_id};"
+
+    try:
+        with psycopg2.connect(database_url, sslmode="require") as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                results = cursor.fetchall()
+    finally:
+        conn.close()
+
+    return None if results == [] else results[0][0]
 
 def write_sql(table_name: str, guild_id: int, column_name: str, value: any):
     database_url = os.getenv("DATABASE_URL")
-    conn = psycopg2.connect(database_url, sslmode="require")
     query = f"INSERT INTO {table_name} (guild_id, {column_name}) VALUES ({guild_id}, {value}) ON CONFLICT (guild_id) DO UPDATE SET {column_name}={value};"
-    cursor = conn.cursor()
-    cursor.execute(query)
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        with psycopg2.connect(database_url, sslmode="require") as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+            conn.commit()
+    finally:
+        conn.close()
