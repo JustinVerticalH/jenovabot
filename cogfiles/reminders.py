@@ -5,13 +5,18 @@ from ioutils import read_sql, write_sql
 import discord
 from discord.ext import commands, tasks
 
+
 @dataclass(frozen=True)
 class Reminder:
+    """A container for data associated with a scheduled reminder."""
+
     command_message: discord.Message
     reminder_datetime: datetime.datetime
     reminder_str: str
 
     def to_json(self) -> str:
+        """A method for converting the current reminder object to a JSON string."""
+
         json_obj = {
             "channel_id": self.command_message.channel.id,
             "command_message_id": self.command_message.id,
@@ -22,6 +27,8 @@ class Reminder:
 
     @staticmethod
     async def from_json(bot: commands.Bot, json_obj: dict[str, int | float | str]):
+        """A static method for converting a JSON dictionary to a Reminder object."""
+
         channel = bot.get_channel(json_obj["channel_id"])
 
         command_message = await channel.fetch_message(json_obj["command_message_id"])
@@ -31,12 +38,16 @@ class Reminder:
         return Reminder(command_message, reminder_datetime, reminder_str)
 
 class Reminders(commands.Cog, name="Reminders"):
+    """A Cog to handle creating and sending scheduled reminder messages."""
+    
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.reminders: dict[int, set[Reminder]] = {}
     
     @commands.Cog.listener()
     async def on_ready(self):
+        """A listener for initializing the reminders instance dictionary from SQL data and starting the reminder processing loop."""
+
         for guild in self.bot.guilds:
             if read_sql("test_reminders", guild.id, "reminders") is None:
                 write_sql("test_reminders", guild.id, "reminders", "array[[]]::json[]")
@@ -45,6 +56,8 @@ class Reminders(commands.Cog, name="Reminders"):
  
     @commands.command()
     async def remindme(self, context: commands.Context, time: str, reminder_str: str = ""):
+        """A command for setting a scheduled reminder for the given user. May also be used to view or cancel existing reminders."""
+
         if time == "viewall":
             await Reminders.remindme_viewall(self, context)
             return
@@ -82,6 +95,8 @@ class Reminders(commands.Cog, name="Reminders"):
     
     @staticmethod
     def get_datetime_parameters(time: str):
+        """A helper method for converting a time string into parameters for a datetime object."""
+
         is_valid = True
 
         timer_parameters = re.fullmatch("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
@@ -90,10 +105,11 @@ class Reminders(commands.Cog, name="Reminders"):
             is_valid = False
         
         return (*tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups())), is_valid)
-
     
     @tasks.loop(seconds=0.1)
     async def process_reminders(self):
+        """A task loop for sending any reminders past their scheduled date and syncing with the SQL database when appropriate."""
+
         for guild in self.bot.guilds:
             reminders = self.reminders[guild.id].copy()
             for reminder in reminders:
