@@ -21,7 +21,8 @@ def read_sql(table_name: str, guild_id: int, column_name: str):
         return None
     cursor.execute(query)
 
-    results = cursor.fetchall[0][0]
+    results = cursor.fetchall
+    results = results[0][0]
     cursor.close()
     conn.close()
     return results
@@ -32,7 +33,7 @@ def write_sql(table_name: str, guild_id: int, column_name: str, value: any):
     query = f"INSERT INTO {table_name} (guild_id, {column_name}) VALUES ({guild_id}, {value}) ON CONFLICT (guild_id) DO UPDATE SET {column_name}={value};"
     cursor = conn.cursor()
     cursor.execute(query)
-    
+
     conn.commit()
     cursor.close()
     conn.close()
