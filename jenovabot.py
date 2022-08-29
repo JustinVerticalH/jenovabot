@@ -1,5 +1,4 @@
-import datetime, os, pytz, re
-import json
+import datetime, json, os, pytz, re
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from ioutils import read_file, read_sql, write_sql
@@ -15,6 +14,7 @@ token = os.getenv("TOKEN")
 command_prefix = os.getenv("PREFIX")
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, intents=intents)
+
 
 class Copypastas(commands.Cog, name="Message Copypastas"):
     def __init__(self, bot: commands.Bot):
@@ -130,7 +130,6 @@ class Reminder:
 
         return Reminder(command_message, reminder_datetime, reminder_str)
 
-
 class Reminders(commands.Cog, name="Reminders"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -180,11 +179,13 @@ class Reminders(commands.Cog, name="Reminders"):
     @tasks.loop(seconds=0.1)
     async def process_reminders(self):
         for guild in self.bot.guilds:
-            for reminder in self.reminders[guild.id].copy():
+            reminders = self.reminders[guild.id].copy()
+            for reminder in reminders:
                 if reminder.reminder_datetime <= datetime.datetime.now():
                     await reminder.command_message.reply(reminder.reminder_str)
                     self.reminders[guild.id].remove(reminder)
-            write_sql("reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
+            if reminders != self.reminders[guild.id]:
+                write_sql("reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
 
 
 class Announcements(commands.Cog, name="Periodic Announcements"):
