@@ -20,6 +20,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        print("Listener in streampause.py")
         """A listener for keeping track of members entering or leaving a voice channel during a streampause, if there is one."""
         
         if self.streampause_data is not None:
