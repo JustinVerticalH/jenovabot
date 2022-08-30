@@ -20,7 +20,6 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        print("Listener in streampause.py")
         """A listener for keeping track of members entering or leaving a voice channel during a streampause, if there is one."""
         
         if self.streampause_data is not None:
@@ -49,7 +48,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
     async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
         """A helper method for attempting to end a streampause upon a change to either reactions or voice channel members."""
         
-        if user.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
+        if user == self.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
             return
 
         reacted_members = set(await reaction.users().flatten())
