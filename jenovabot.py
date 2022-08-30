@@ -9,6 +9,7 @@ from cogfiles.alerts import EventAlerts
 from cogfiles.streampause import StreamPause
 from cogfiles.reminders import Reminders
 from cogfiles.announcements import Announcements
+from cogfiles.music import Music
 
 
 def main():
@@ -19,7 +20,7 @@ def main():
     intents = discord.Intents.all()
     bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, intents=intents)
 
-    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot)
+    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot)
     for cog in cogs:
         bot.add_cog(cog)
 
