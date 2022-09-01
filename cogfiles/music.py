@@ -27,7 +27,7 @@ class Music(commands.Cog, name="Music"):
             if vc:
                 await vc.disconnect()
 
-    @commands.command()
+    @commands.command(aliases=["p"])
     async def play(self, context: commands.Context, *, search: wavelink.YouTubeTrack):
         """A command for playing a song with the given search query."""
 
@@ -36,6 +36,7 @@ class Music(commands.Cog, name="Music"):
         if not context.voice_client:
             vc = await context.author.voice.channel.connect(cls=wavelink.Player)
             
+        await context.send(embed=discord.Embed().add_field(name="Now Playing", value=search))
         await vc.play(search)
     
     @commands.command()
@@ -46,7 +47,7 @@ class Music(commands.Cog, name="Music"):
         if vc and (vc.is_playing() or vc.is_paused()):
             await vc.stop()
     
-    @commands.command(aliases=["p"])
+    @commands.command()
     async def pause(self, context: commands.Context):
         """A command for pausing the currently playing song, if there is one."""
         

@@ -14,6 +14,9 @@ class Reminder:
     reminder_datetime: datetime.datetime
     reminder_str: str
 
+    def __str__(self):
+        return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for <t:{int(self.reminder_datetime.timestamp())}>: {self.reminder_str!r}"
+
     def to_json(self) -> str:
         """A method for converting the current reminder object to a JSON string."""
 
@@ -54,16 +57,9 @@ class Reminders(commands.Cog, name="Reminders"):
             self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("test_reminders", guild.id, "reminders")}
         self.process_reminders.start()
  
-    @commands.command()
-    async def remindme(self, context: commands.Context, time: str, reminder_str: str = ""):
+    @commands.group(aliases=["remindme", "rm"], invoke_without_command=True)
+    async def remind(self, context: commands.Context, time: str, *, reminder_str: str = ""):
         """A command for setting a scheduled reminder for the given user. May also be used to view or cancel existing reminders."""
-
-        if time == "viewall":
-            await Reminders.remindme_viewall(self, context)
-            return
-        if time == "cancel":
-           await Reminders.remindme_cancel(self, context)
-           return
 
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
@@ -82,16 +78,6 @@ class Reminders(commands.Cog, name="Reminders"):
         self.reminders[context.guild.id].add(reminder)
         write_sql("test_reminders", context.guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[context.guild.id]]}::json[]")
         await context.message.add_reaction("👍")
-
-    async def remindme_viewall(self, context: commands.Context):
-        reminder_str = ""
-        for i, reminder in enumerate(self.reminders[context.guild.id]):
-            reminder_str += f"""{i+1}. Reminder in {reminder.command_message.channel.mention} by {reminder.command_message.author.name} for <t:{int(reminder.reminder_datetime.timestamp())}>: "{reminder.reminder_str}"\n"""
-        await context.send(reminder_str)
-
-    async def remindme_cancel(self, context: commands.Context):
-        pass
-        #TODO: This function
     
     @staticmethod
     def get_datetime_parameters(time: str):
@@ -105,6 +91,22 @@ class Reminders(commands.Cog, name="Reminders"):
             is_valid = False
         
         return (*tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups())), is_valid)
+
+    @remind.command()
+    async def viewall(self, context: commands.Context):
+        if len(self.reminders[context.guild.id]) == 0:
+            await context.send("No reminders currently set.")
+            return
+
+        reminder_list = discord.Embed()
+        for i, reminder in enumerate(self.reminders[context.guild.id]):
+            reminder_list.add_field(name=f"{i+1}.", value=reminder, inline=False)
+        await context.send(embed=reminder_list)
+
+    @remind.command()
+    async def cancel(self, context: commands.Context):
+        pass
+        #TODO: This function
     
     @tasks.loop(seconds=0.1)
     async def process_reminders(self):
