@@ -51,7 +51,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         if user == self.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
             return
 
-        reacted_members = set(await reaction.users().flatten())
+        reacted_members = {user async for user in reaction.users()}
         vc_members = set(voice_channel.members)
 
         if reacted_members & vc_members == vc_members:
