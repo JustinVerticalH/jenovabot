@@ -5,14 +5,14 @@ from discord.ext import commands
 
 
 class EventAlerts(commands.Cog, name="Event Alerts"):
-    """A Cog to handle sending a timestamped ping message whenever an event is created for a particular role."""
+    """Send a timestamped ping message whenever an event is created for a particular role."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
     @commands.Cog.listener()
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
-        """A listener for sending a ping message when an event tied to a role is created."""
+        """Send a ping message when an event tied to a role is created."""
 
         for role in event.guild.roles:
             if role.name.replace(" Ping", "") in event.name:
@@ -22,7 +22,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
 
     @commands.command()
     async def alerts(self, context: commands.Context, argument: str):
-        """A command for setting which channel to send event alert ping messages."""
+        """Set which channel to send event alert ping messages."""
         
         if context.author.guild_permissions.manage_guild:
             for channel in context.guild.channels:
