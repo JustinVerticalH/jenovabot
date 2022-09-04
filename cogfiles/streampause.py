@@ -5,7 +5,7 @@ from discord.ext import commands
 
 
 class StreamPause(commands.Cog, name="Stream Pause"):
-    """A Cog to handle setting up a message to react to when taking a break during a stream."""
+    """Set up a message to react to when taking a break during a stream."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -13,14 +13,14 @@ class StreamPause(commands.Cog, name="Stream Pause"):
     
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
-        """A listener for keeping track of reactions added to a streampause message, if there is one."""
+        """Keep track of reactions added to a streampause message, if there is one."""
 
         if self.streampause_data is not None:
             await self.attempt_to_finish_streampause(reaction, user, user.voice.channel if user.voice else None)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        """A listener for keeping track of members entering or leaving a voice channel during a streampause, if there is one."""
+        """Keep track of members entering or leaving a voice channel during a streampause, if there is one."""
         
         if self.streampause_data is not None:
             voice_channel = before.channel if after.channel is None else after.channel if before.channel is None else None
@@ -30,7 +30,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
     @commands.command()
     async def streampause(self, context: commands.Context):
-        """A command for setting up a streampause message for voice channel members to react to."""
+        """Set up a streampause message for voice channel members to react to."""
         
         if context.author.voice is None:
             await context.send("This command is only usable inside a voice channel.")
@@ -46,7 +46,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         await message.add_reaction("👍")
 
     async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
-        """A helper method for attempting to end a streampause upon a change to either reactions or voice channel members."""
+        """Attempt to end a streampause upon a change to either reactions or voice channel members."""
         
         if user == self.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
             return

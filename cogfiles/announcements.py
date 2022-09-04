@@ -6,7 +6,7 @@ from discord.ext import commands, tasks
 
 
 class Announcements(commands.Cog, name="Periodic Announcements"):
-    """A Cog to handle periodically sending specific messages in certain channels at scheduled times."""
+    """Periodically send specific messages in certain channels at scheduled times."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -14,13 +14,13 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """A listener for starting the periodic announcements processing loop."""
+        """Starti the periodic announcements processing loop."""
 
         self.periodic_announcements.start()
 
     @commands.command()
     async def announcements(self, context: commands.Context, argument: str):
-        """A command for setting which channel to send periodic announcement messages."""
+        """Set which channel to send periodic announcement messages."""
         
         if context.author.guild_permissions.manage_guild:
             for channel in context.guild.channels:
@@ -35,7 +35,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @tasks.loop(minutes=0.2)
     async def periodic_announcements(self):
-        """A task loop for sending periodic announcement messages at their appropriate times."""
+        """Send periodic announcement messages at their appropriate times."""
         
         now = datetime.datetime.now(pytz.timezone("US/Eastern"))
         for guild in self.bot.guilds:
