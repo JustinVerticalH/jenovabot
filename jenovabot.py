@@ -1,3 +1,4 @@
+import asyncio
 import os
 from dotenv import load_dotenv
 
@@ -22,7 +23,7 @@ def main():
 
     cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot)
     for cog in cogs:
-        bot.add_cog(cog)
+        asyncio.run(bot.add_cog(cog))
 
     bot.run(token)
 

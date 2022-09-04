@@ -6,7 +6,12 @@ class Music(commands.Cog, name="Music"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        bot.loop.create_task(self.connect_nodes())
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """A listener for connecting to the Lavalink nodes."""
+
+        self.bot.loop.create_task(self.connect_nodes())
 
     async def connect_nodes(self):
         """Connect to our Lavalink nodes."""

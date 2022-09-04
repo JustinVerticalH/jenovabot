@@ -10,6 +10,12 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """A listener for starting the periodic announcements processing loop."""
+
         self.periodic_announcements.start()
 
     @commands.command()
