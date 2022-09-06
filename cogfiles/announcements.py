@@ -19,19 +19,18 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         self.periodic_announcements.start()
 
     @commands.command()
+    @commands.has_guild_permissions(manage_guild=True)
     async def announcements(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
-        
-        if not context.author.guild_permissions.manage_guild:
-            await context.send("User needs Manage Server permission to use this command.")
-            return
         
         write_sql("test_settings", context.guild.id, "periodic_announcement_channel_id", channel.id)
         await context.send(f"Periodic announcement channel is set to {channel.mention}")
     
     @announcements.error
-    async def channel_not_found(self, context: commands.Context, error):
-        if isinstance(error, commands.errors.ChannelNotFound):
+    async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
+        if isinstance(error, commands.errors.MissingPermissions):
+            await context.send("User needs Manage Server permission to use this command.")
+        elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
     @tasks.loop(minutes=0.2)
