@@ -11,6 +11,7 @@ from cogfiles.streampause import StreamPause
 from cogfiles.reminders import Reminders
 from cogfiles.announcements import Announcements
 from cogfiles.music import Music
+from cogfiles.web_scrapers import WebScrapers
 
 
 def main():
@@ -18,10 +19,11 @@ def main():
     token = os.getenv("TOKEN")
 
     command_prefix = os.getenv("PREFIX")
+    activity = discord.Activity(name="Higurashi When They Cry", type=discord.ActivityType.playing, assets = {"small_image":"rena.png"})
     intents = discord.Intents.all()
-    bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, intents=intents)
+    bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, activity=activity, intents=intents)
 
-    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot)
+    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), WebScrapers(bot)
     for cog in cogs:
         asyncio.run(bot.add_cog(cog))
 
