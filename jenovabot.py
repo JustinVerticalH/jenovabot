@@ -17,10 +17,11 @@ from cogfiles.web_scrapers import WebScrapers
 def main():
     load_dotenv()
     token = os.getenv("TOKEN")
-
+    stream_name = os.getenv("CURRENT_STREAM_NAME")
     command_prefix = os.getenv("PREFIX")
-    activity = discord.Activity(name="Higurashi When They Cry", type=discord.ActivityType.playing, assets = {"small_image":"rena.png"})
+    activity = discord.Game(name=stream_name)
     intents = discord.Intents.all()
+    
     bot = commands.Bot(command_prefix="!" if command_prefix is None else command_prefix, activity=activity, intents=intents)
 
     cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), WebScrapers(bot)
