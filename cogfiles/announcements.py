@@ -14,7 +14,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Starti the periodic announcements processing loop."""
+        """Start the periodic announcements processing loop."""
 
         self.periodic_announcements.start()
 
@@ -33,7 +33,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
-    @tasks.loop(minutes=0.2)
+    @tasks.loop(seconds=12)
     async def periodic_announcements(self):
         """Send periodic announcement messages at their appropriate times."""
         

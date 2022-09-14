@@ -81,6 +81,7 @@ class Reminders(commands.Cog, name="Reminders"):
                 write_sql("test_reminders", guild.id, "reminders", "array[[]]::json[]")
             self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("test_reminders", guild.id, "reminders")}
         
+        self._cached_reminders = self.reminders.copy()
         self.send_reminders.start()
         self.sync_sql.start()
  
@@ -146,7 +147,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
         await context.send(view=ReminderCancelView(context, filtered_reminders))
     
-    @tasks.loop(seconds=0.1)
+    @tasks.loop(seconds=0.2)
     async def send_reminders(self):
         """Send any reminders past their scheduled date."""
 
@@ -157,11 +158,11 @@ class Reminders(commands.Cog, name="Reminders"):
                     await reminder.command_message.reply(reminder.reminder_str)
                     self.reminders[guild.id].remove(reminder)
     
-    @tasks.loop(seconds=0.1)
+    @tasks.loop(seconds=0.3)
     async def sync_sql(self):
         """Sync with the SQL database if any changes are detected."""
 
         for guild in self.bot.guilds:
-            saved_reminders = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("test_reminders", guild.id, "reminders")}
-            if saved_reminders != self.reminders[guild.id]:
+            if self.reminders[guild.id] != self._cached_reminders[guild.id]:
                 write_sql("test_reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
+                self._cached_reminders = self.reminders.copy()
