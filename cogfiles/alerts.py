@@ -9,7 +9,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.already_pinged_events = []
+        self.already_pinged_events = set()
 
     @commands.Cog.listener()
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
@@ -26,19 +26,19 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         if before.channel is None and after.channel is not None: # Member has joined a voice channel
             events = await member.guild.fetch_scheduled_events()
             for event in events:
-                if event.id not in self.already_pinged_events:
+                if event not in self.already_pinged_events:
                     if event.creator.id == member.id:
                         role = EventAlerts.get_role_from_event(event)
                         time_until_event_start = event.start_time - datetime.datetime.now().astimezone(event.start_time.tzinfo)
                         if time_until_event_start <= datetime.timedelta(minutes = 30):
                             channel = await event.guild.fetch_channel(read_sql("test_settings", event.guild.id, "scheduled_event_alert_channel_id"))
                             await channel.send(f"{event.name} is starting soon! {role.mention}")
-                            self.already_pinged_events.append(event.id)
+                            self.already_pinged_events.add(event)
 
     @commands.Cog.listener()
     async def on_scheduled_event_update(self, before: discord.ScheduledEvent, after: discord.ScheduledEvent):
         if before.status == discord.EventStatus.active and after.status == discord.EventStatus.completed: # Event has just finished
-            self.already_pinged_events.remove(before.id)
+            self.already_pinged_events.remove(before)
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
