@@ -23,7 +23,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     async def announcements(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
         
-        write_sql("test_settings", context.guild.id, "periodic_announcement_channel_id", channel.id)
+        write_sql("settings", context.guild.id, "periodic_announcement_channel_id", channel.id)
         await context.send(f"Periodic announcement channel is set to {channel.mention}")
     
     @announcements.error
@@ -39,7 +39,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         
         now = datetime.datetime.now(pytz.timezone("US/Eastern"))
         for guild in self.bot.guilds:
-            channel_id = read_sql("test_settings", guild.id, "periodic_announcement_channel_id")
+            channel_id = read_sql("settings", guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = self.bot.get_channel(channel_id)
                 if now.weekday() == 4 and now.hour == 17 and now.minute == 0 and now.second < 12: # Friday, 5:00 PM EST

@@ -77,9 +77,9 @@ class Reminders(commands.Cog, name="Reminders"):
         """Initialize the reminders instance dictionary from SQL data and start the reminder processing loop."""
 
         for guild in self.bot.guilds:
-            if read_sql("test_reminders", guild.id, "reminders") is None:
-                write_sql("test_reminders", guild.id, "reminders", "array[[]]::json[]")
-            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("test_reminders", guild.id, "reminders")}
+            if read_sql("reminders", guild.id, "reminders") is None:
+                write_sql("reminders", guild.id, "reminders", "array[[]]::json[]")
+            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("reminders", guild.id, "reminders")}
         
         self._cached_reminders = self.reminders.copy()
         self.send_reminders.start()
@@ -164,5 +164,5 @@ class Reminders(commands.Cog, name="Reminders"):
 
         for guild in self.bot.guilds:
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
-                write_sql("test_reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
+                write_sql("reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
                 self._cached_reminders = self.reminders.copy()

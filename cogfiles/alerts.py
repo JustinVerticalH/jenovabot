@@ -45,7 +45,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     async def alerts(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send event alert ping messages."""
 
-        write_sql("test_settings", context.guild.id, "scheduled_event_alert_channel_id", channel.id)
+        write_sql("settings", context.guild.id, "scheduled_event_alert_channel_id", channel.id)
         await context.send(f"Event alert channel is set to {channel.mention}")
     
     @alerts.error
