@@ -1,23 +1,23 @@
 import datetime, json, re
-from dataclasses import dataclass
-from ioutils import read_sql, write_sql
+from dataclasses import dataclass, field
+from ioutils import read_sql, write_sql, DATABASE_SETTINGS
 
 import discord
 from discord.ext import commands, tasks
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Reminder:
     """Data associated with a scheduled reminder."""
 
-    command_message: discord.Message
+    command_message: discord.Message = field(compare=False)
     reminder_datetime: datetime.datetime
-    reminder_str: str
-
-    def __str__(self):
-        return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for <t:{int(self.reminder_datetime.timestamp())}>: {self.reminder_str!r}"
+    reminder_str: str = field(compare=False)
 
     def __repr__(self):
+        return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for <t:{int(self.reminder_datetime.timestamp())}>: {self.reminder_str!r}"
+
+    def __str__(self):
         return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime.strftime('%a %b %d, %I:%M %p')}: {self.reminder_str!r}"
 
     def to_json(self) -> str:
@@ -48,18 +48,23 @@ class ReminderCancelSelect(discord.ui.Select):
         self.bot = context.bot
         self.reminders = reminders
 
-        options = [discord.SelectOption(label=repr(reminder)) for reminder in reminders]
+        options = [discord.SelectOption(label=str(reminder)) for reminder in sorted(reminders)]
         super().__init__(placeholder="Select reminders to cancel...", max_values=len(reminders), options=options)
     
     async def callback(self, interaction: discord.Interaction):
-        cancelled_reminders = {reminder for reminder in self.reminders if repr(reminder) in self.values}
+        cancelled_reminders = {reminder for reminder in self.reminders if str(reminder) in self.values}
         self.bot.get_cog("Reminders").reminders[interaction.guild_id] -= cancelled_reminders
 
-        await interaction.response.send_message(f"Cancelled: {[str(reminder) for reminder in cancelled_reminders]}", ephemeral=True)
+        cancelled_reminder_list = discord.Embed(
+            title="Cancelled Reminders",
+            description='\n'.join([str(reminder) for reminder in sorted(cancelled_reminders)])
+        )
+        await interaction.response.send_message(embed=cancelled_reminder_list, ephemeral=True)
 
 class ReminderCancelView(discord.ui.View):
     def __init__(self, context: commands.Context, reminders: set[Reminder]):
         super().__init__()
+        self.member = context.author
         self.add_item(ReminderCancelSelect(context, reminders))
     
     async def interaction_check(self, interaction: discord.Interaction):
@@ -71,17 +76,18 @@ class Reminders(commands.Cog, name="Reminders"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.reminders: dict[int, set[Reminder]] = {}
+        self._cached_reminders: dict[int, set[Reminder]] = {}
     
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize the reminders instance dictionary from SQL data and start the reminder processing loop."""
 
         for guild in self.bot.guilds:
-            if read_sql("reminders", guild.id, "reminders") is None:
-                write_sql("reminders", guild.id, "reminders", "array[[]]::json[]")
-            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql("reminders", guild.id, "reminders")}
+            if read_sql(DATABASE_SETTINGS, guild.id, "reminders") is None:
+                write_sql(DATABASE_SETTINGS, guild.id, "reminders", "array[[]]::json[]")
+            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql(DATABASE_SETTINGS, guild.id, "reminders")}
+            self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
         
-        self._cached_reminders = self.reminders.copy()
         self.send_reminders.start()
         self.sync_sql.start()
  
@@ -129,9 +135,10 @@ class Reminders(commands.Cog, name="Reminders"):
             await context.send("No reminders currently set.")
             return
 
-        reminder_list = discord.Embed()
-        for i, reminder in enumerate(self.reminders[context.guild.id]):
-            reminder_list.add_field(name=f"{i+1}.", value=reminder, inline=False)
+        reminder_list = discord.Embed(
+            title="Scheduled Reminders",
+            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[context.guild.id]))])
+        )
         await context.send(embed=reminder_list)
 
     @remind.command()
@@ -164,5 +171,5 @@ class Reminders(commands.Cog, name="Reminders"):
 
         for guild in self.bot.guilds:
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
-                write_sql("reminders", guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
-                self._cached_reminders = self.reminders.copy()
+                write_sql(DATABASE_SETTINGS, guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
+                self._cached_reminders[guild.id] = self.reminders[guild.id].copy()

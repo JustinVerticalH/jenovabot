@@ -1,6 +1,8 @@
 import json, os, psycopg2
 
 
+DATABASE_SETTINGS = os.getenv("DATABASE_SETTINGS", default="test_settings")
+
 def read_json(file_name: str, *path: list[str | int]):
     """Read JSON object data from a file."""
     

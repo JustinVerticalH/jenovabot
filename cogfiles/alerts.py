@@ -1,4 +1,4 @@
-from ioutils import read_sql, write_sql
+from ioutils import read_sql, write_sql, DATABASE_SETTINGS
 
 import discord, datetime
 from discord.ext import commands
@@ -17,7 +17,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
 
         for role in event.guild.roles:
             if role.name.replace(" Ping", "") in event.name:
-                channel = await event.guild.fetch_channel(read_sql("test_settings", event.guild.id, "scheduled_event_alert_channel_id"))
+                channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
                 start_time = int(event.start_time.timestamp())
                 await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
     
@@ -31,7 +31,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
                         role = EventAlerts.get_role_from_event(event)
                         time_until_event_start = event.start_time - datetime.datetime.now().astimezone(event.start_time.tzinfo)
                         if time_until_event_start <= datetime.timedelta(minutes = 30):
-                            channel = await event.guild.fetch_channel(read_sql("test_settings", event.guild.id, "scheduled_event_alert_channel_id"))
+                            channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
                             await channel.send(f"{event.name} is starting soon! {role.mention}")
                             self.already_pinged_events.add(event)
 
