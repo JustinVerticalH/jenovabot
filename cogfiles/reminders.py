@@ -19,7 +19,7 @@ class Reminder:
         return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
 
     def __str__(self):
-        return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d}: {self.reminder_str!r}"
+        return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
 
     def to_json(self) -> str:
         """Covnert the current reminder object to a JSON string."""
