@@ -4,6 +4,7 @@ from ioutils import read_sql, write_sql, DATABASE_SETTINGS
 
 import discord
 from discord.ext import commands, tasks
+from discord.utils import format_dt
 
 
 @dataclass(frozen=True, order=True)
@@ -15,10 +16,10 @@ class Reminder:
     reminder_str: str = field(compare=False)
 
     def __repr__(self):
-        return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for <t:{int(self.reminder_datetime.timestamp())}>: {self.reminder_str!r}"
+        return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
 
     def __str__(self):
-        return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime.strftime('%a %b %d, %I:%M %p')}: {self.reminder_str!r}"
+        return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d}: {self.reminder_str!r}"
 
     def to_json(self) -> str:
         """Covnert the current reminder object to a JSON string."""
@@ -104,7 +105,7 @@ class Reminders(commands.Cog, name="Reminders"):
             else:
                 await context.send(f"Time string is not formatted correctly; did you mean to type {time_string_guess}?")
             return
-        reminder_datetime = datetime.datetime.now() + datetime.timedelta(days = num_days, hours = num_hours, minutes = num_minutes, seconds = num_seconds)
+        reminder_datetime = datetime.datetime.now() + datetime.timedelta(days=num_days, hours=num_hours, minutes=num_minutes, seconds=num_seconds)
 
         reminder = Reminder(context.message, reminder_datetime, reminder_str)
         

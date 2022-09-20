@@ -2,6 +2,7 @@ from ioutils import read_sql, write_sql, DATABASE_SETTINGS
 
 import discord, datetime
 from discord.ext import commands
+from discord.utils import format_dt
 
 
 class EventAlerts(commands.Cog, name="Event Alerts"):
@@ -18,8 +19,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         for role in event.guild.roles:
             if role.name.replace(" Ping", "") in event.name:
                 channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
-                start_time = int(event.start_time.timestamp())
-                await channel.send(f"{event.name} is set for <t:{start_time}>! {role.mention}")
+                await channel.send(f"{event.name} is set for {format_dt(event.start_time, style='F')}! {role.mention}")
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -32,7 +32,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
                         time_until_event_start = event.start_time - datetime.datetime.now().astimezone(event.start_time.tzinfo)
                         if time_until_event_start <= datetime.timedelta(minutes = 30):
                             channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
-                            await channel.send(f"{event.name} is starting soon! {role.mention}")
+                            await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}")
                             self.already_pinged_events.add(event)
 
     @commands.Cog.listener()
