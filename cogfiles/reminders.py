@@ -163,7 +163,16 @@ class Reminders(commands.Cog, name="Reminders"):
             reminders = self.reminders[guild.id].copy()
             for reminder in reminders:
                 if reminder.reminder_datetime <= datetime.datetime.now():
-                    await reminder.command_message.reply(reminder.reminder_str)
+                    # Read the list of reactions to the message, and create a string to mention each user (besides the bot) who reacted
+                    for reaction in reminder.command_message.reactions:
+                        if reaction.emoji == "👍":
+                            subscribers = [user async for user in reaction.users()]
+                            subscribers_mention = "\n"
+                            for user in subscribers:
+                                if user != self.bot.user:
+                                    subscribers_mention += user.mention + " "
+
+                    await reminder.command_message.reply(f"{reminder.reminder_str} {subscribers_mention}")
                     self.reminders[guild.id].remove(reminder)
     
     @tasks.loop(seconds=0.3)
