@@ -53,14 +53,24 @@ class Music(commands.Cog, name="Music"):
         
         await vc.play(await vc.queue.get_wait())
     
+    @commands.command(aliases=["q"])
+    async def queue(seld, context: commands.Context):
+        """Show the current state of the queue."""
+
+        vc: wavelink.Player = context.voice_client
+        if vc:
+            queue_track_list = discord.Embed(
+                title="Queue",
+                description='\n'.join([f"{i+1}. {track.title} by {track.author}" for i, track in enumerate(vc.queue)])
+            )
+            await context.send(embed=queue_track_list)
+    
     @commands.command(aliases=["p"])
     async def play(self, context: commands.Context, *, search: wavelink.YouTubeTrack):
         """Play or queue a track with the given search query."""
 
         #If not connected, connect to the voice channel.
-        vc: wavelink.Player = context.voice_client
-        if not context.voice_client:
-            vc = await context.author.voice.channel.connect(cls=wavelink.Player)
+        vc: wavelink.Player = context.voice_client or await context.author.voice.channel.connect(cls=wavelink.Player)
             
         self.track_context[search.id] = context
         if vc.is_playing() or vc.is_paused():
@@ -69,6 +79,15 @@ class Music(commands.Cog, name="Music"):
         else:
             await vc.play(search)
         
+    @commands.command(aliases=["np"])
+    async def nowplaying(self, context: commands.Context):
+        """Show the currently playing track, if there is one."""
+
+        vc: wavelink.Player = context.voice_client
+        if vc and (vc.is_playing() or vc.is_paused()):
+            await context.send(embed=discord.Embed(title="Now Playing", url=vc.source.uri, description=f"{vc.source.title} by {vc.source.author}"))
+        else:
+            await context.send("No track is currently playing.")
     
     @commands.command()
     async def stop(self, context: commands.Context):
