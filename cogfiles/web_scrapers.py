@@ -17,8 +17,11 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         """Search HowLongToBeat with the given game name."""
         
         results_list = await HowLongToBeat().async_search(game_name)
-        if results_list is not None and len(results_list) > 0:
-            game = max(results_list, key=lambda element: element.similarity)
+        if results_list is None or len(results_list) == 0:
+            await context.send("Could not find a game with that title.")
+            return
+        
+        game = max(results_list, key=lambda element: element.similarity)
         
         game_data = discord.Embed(title=game.game_name, url=game.game_web_link)
         game_data.set_thumbnail(url=game.game_image_url)
@@ -47,7 +50,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 if str(response.url) == "http://headyversion.com/search/":
                     table = soup.find("table")
                     if table is None:
-                        await context.send(f"Could not find a song with that title.")
+                        await context.send("Could not find a song with that title.")
                         return
                     else:
                         songs = table.find_all("div", class_ = "big_link")
