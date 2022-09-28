@@ -121,7 +121,7 @@ class Music(commands.Cog, name="Music"):
         if vc and (vc.is_playing() or vc.is_paused()):
             await self.on_wavelink_track_end(vc, vc.track, None)
     
-    @commands.command(aliases=["dc", "fuckoff"])
+    @commands.command(aliases=["dc"])
     async def disconnect(self, context: commands.Context):
         """Disconnect the player from the current voice channel, if there is one."""
         

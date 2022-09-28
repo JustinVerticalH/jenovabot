@@ -1,6 +1,6 @@
 from ioutils import read_json
-
-import discord
+from dotenv import load_dotenv
+import discord, json, os
 from discord.ext import commands
 
 
@@ -16,7 +16,10 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
 
         if message.author == self.bot.user:
             return
-        copypastas = read_json("copypastas.json")
+
+        load_dotenv()
+        copypastas_json = os.getenv("COPYPASTAS")
+        copypastas = json.loads(copypastas_json)
         for phrase in copypastas:
             if phrase in message.content.lower():
                 await message.channel.send(copypastas[phrase])
