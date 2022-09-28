@@ -11,12 +11,8 @@ from cogfiles.streampause import StreamPause
 from cogfiles.reminders import Reminders
 from cogfiles.announcements import Announcements
 from cogfiles.music import Music
-<<<<<<< HEAD
-from cogfiles.web_scrapers import WebScrapers
-=======
 from cogfiles.polling import Polling
->>>>>>> 0510289e2c65c3d14fa1b292ef6219feaaeddf8b
-
+from cogfiles.web_scrapers import WebScrapers
 
 def main():
     load_dotenv()
@@ -28,11 +24,7 @@ def main():
     intents = discord.Intents.all()
     bot = commands.Bot(command_prefix=command_prefix, activity=activity, intents=intents, enable_debug_events=True)
 
-<<<<<<< HEAD
-    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), WebScrapers(bot)
-=======
-    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), Polling(bot)
->>>>>>> 0510289e2c65c3d14fa1b292ef6219feaaeddf8b
+    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), Polling(bot), WebScrapers(bot)
     for cog in cogs:
         asyncio.run(bot.add_cog(cog))
 
