@@ -1,6 +1,6 @@
-from ioutils import read_json
-from dotenv import load_dotenv
 import discord, json, os
+
+from dotenv import load_dotenv
 from discord.ext import commands
 
 
@@ -16,7 +16,7 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
 
         if message.author == self.bot.user:
             return
-
+        
         load_dotenv()
         copypastas_json = os.getenv("COPYPASTAS")
         copypastas = json.loads(copypastas_json)

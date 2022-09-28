@@ -1,18 +1,42 @@
 import aiohttp, re
 from bs4 import BeautifulSoup
+from howlongtobeatpy import HowLongToBeat
 
 import discord
 from discord.ext import commands
 
 
 class WebScrapers(commands.Cog, name="Web Scrapers"):
-    """A Cog to handle grabbing data from various websites and sending it."""
+    """Grab data from various websites and send it."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    @commands.command(aliases=["hltb"])
+    async def howlongtobeat(self, context: commands.Context, *, game_name: str):
+        """Search HowLongToBeat with the given game name."""
+        
+        results_list = await HowLongToBeat().async_search(game_name)
+        if results_list is not None and len(results_list) > 0:
+            game = max(results_list, key=lambda element: element.similarity)
+        
+        game_data = discord.Embed(title=game.game_name, url=game.game_web_link)
+        game_data.set_thumbnail(url=game.game_image_url)
+        
+        if game.main_story != 0:
+            game_data.add_field(name="Main Story", value=f"{game.main_story} Hours", inline=False)
+        if game.main_extra != 0:
+            game_data.add_field(name="Main + Extra", value=f"{game.main_extra} Hours", inline=False)
+        if game.completionist != 0:
+            game_data.add_field(name="Completionist", value=f"{game.completionist} Hours", inline=False)
+
+        await context.send(embed=game_data)
+        
+    
     @commands.command()
     async def heady(self, context: commands.Context, *, song_name: str):
+        """Search HeadyVersion with the given song name."""
+
         async with aiohttp.ClientSession() as session:
             async with session.get("http://headyversion.com/search/") as response:
                 token = response.cookies["csrftoken"].value
