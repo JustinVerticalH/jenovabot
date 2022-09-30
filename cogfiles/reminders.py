@@ -1,6 +1,6 @@
 import datetime, json, re
 from dataclasses import dataclass, field
-from ioutils import read_sql, write_sql, DATABASE_SETTINGS
+from ioutils import RandomColorEmbed, read_sql, write_sql, DATABASE_SETTINGS
 
 import discord
 from discord.ext import commands, tasks
@@ -56,7 +56,7 @@ class ReminderCancelSelect(discord.ui.Select):
         cancelled_reminders = {reminder for reminder in self.reminders if str(reminder) in self.values}
         self.bot.get_cog("Reminders").reminders[interaction.guild_id] -= cancelled_reminders
 
-        cancelled_reminder_list = discord.Embed(
+        cancelled_reminder_list = RandomColorEmbed(
             title="Cancelled Reminders",
             description='\n'.join([str(reminder) for reminder in sorted(cancelled_reminders)])
         )
@@ -136,7 +136,7 @@ class Reminders(commands.Cog, name="Reminders"):
             await context.send("No reminders currently set.")
             return
 
-        reminder_list = discord.Embed(
+        reminder_list = RandomColorEmbed(
             title="Scheduled Reminders",
             description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[context.guild.id]))])
         )

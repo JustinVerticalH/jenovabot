@@ -1,4 +1,6 @@
 import discord, wavelink
+
+from ioutils import RandomColorEmbed
 from discord.ext import commands
 
 SKIPPING = object()
@@ -44,7 +46,7 @@ class Music(commands.Cog, name="Music"):
     async def on_wavelink_track_start(self, vc: wavelink.Player, track: wavelink.Track):
         """Display the currently playing track."""
         
-        now_playing_embed = discord.Embed(title="Now Playing", url=track.uri, description=f"{track.title} by {track.author}")
+        now_playing_embed = RandomColorEmbed(title="Now Playing", url=track.uri, description=f"{track.title} by {track.author}")
         if isinstance(track, wavelink.YouTubeTrack):
             now_playing_embed.set_thumbnail(url=track.thumbnail)
 
@@ -76,7 +78,7 @@ class Music(commands.Cog, name="Music"):
         if not vc:
             return
         
-        queue_track_list = discord.Embed(
+        queue_track_list = RandomColorEmbed(
             title="Queue",
             description='\n'.join([f"{i+1}. **{track.title}** by {track.author}" for i, track in enumerate(vc.queue)[:10]])
         )
@@ -99,7 +101,7 @@ class Music(commands.Cog, name="Music"):
         self.track_context[search.id] = context
         if vc.is_playing() or vc.is_paused():
             await vc.queue.put_wait(search)
-            await context.send(embed=discord.Embed(title="Queued", url=search.uri, description=f"{search.title} by {search.author}").set_thumbnail(url=search.thumbnail))
+            await context.send(embed=RandomColorEmbed(title="Queued", url=search.uri, description=f"{search.title} by {search.author}").set_thumbnail(url=search.thumbnail))
         else:
             await vc.play(search)
         
@@ -111,7 +113,7 @@ class Music(commands.Cog, name="Music"):
         if vc and (vc.is_playing() or vc.is_paused()):
             track = vc.source
             
-            now_playing_embed = discord.Embed(title="Now Playing", url=track.uri, description=f"{track.title} by {track.author}")
+            now_playing_embed = RandomColorEmbed(title="Now Playing", url=track.uri, description=f"{track.title} by {track.author}")
             if isinstance(track, wavelink.YouTubeTrack):
                 now_playing_embed.set_thumbnail(url=track.thumbnail)
             

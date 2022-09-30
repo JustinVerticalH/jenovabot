@@ -1,5 +1,6 @@
 import aiohttp, re
 from bs4 import BeautifulSoup
+from ioutils import RandomColorEmbed
 from howlongtobeatpy import HowLongToBeat
 
 import discord
@@ -23,7 +24,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         
         game = max(results_list, key=lambda element: element.similarity)
         
-        game_data = discord.Embed(title=game.game_name, url=game.game_web_link)
+        game_data = RandomColorEmbed(title=game.game_name, url=game.game_web_link)
         game_data.set_thumbnail(url=game.game_image_url)
         
         if game.main_story != 0:
@@ -77,6 +78,6 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                         field_value = f"[HeadyVersion Link]({show_heady_link}) | [Archive.org Link]({show_archive_link})\n\n"
                         description += f"{field_name}\n {field_value}"
 
-                embed = discord.Embed(title = title, url = response.url, description = description)
+                embed = RandomColorEmbed(title = title, url = response.url, description = description)
                 embed.set_thumbnail(url="https://clipartspub.com/images/grateful-dead-clipart-template-5.png")
                 await context.send(embed=embed)
