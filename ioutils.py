@@ -1,8 +1,9 @@
-import json, os, psycopg2
+import json, os, psycopg2, psycopg2.extensions, psycopg2.extras
 from discord import Embed, Color
 
 
 DATABASE_SETTINGS = os.getenv("DATABASE_SETTINGS", default="test_settings")
+psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
 
 class RandomColorEmbed(Embed):
     def __init__(self, *args, **kwargs):
@@ -39,12 +40,14 @@ def write_sql(table_name: str, guild_id: int, column_name: str, value: any):
     """Write data to a single cell in a SQL table."""
     
     database_url = os.getenv("DATABASE_URL")
-    query = f"INSERT INTO {table_name} (guild_id, {column_name}) VALUES ({guild_id}, {value}) ON CONFLICT (guild_id) DO UPDATE SET {column_name}={value};"
+    query = f"INSERT INTO {table_name} (guild_id, {column_name}) VALUES (%(guild_id)s, %(value)s) ON CONFLICT (guild_id) DO UPDATE SET {column_name}=%(value)s;"
+    if isinstance(value, list) and all(isinstance(x, dict) for x in value):
+        query = query.replace(r"%(value)s", r"%(value)s::json[]")
 
     try:
         with psycopg2.connect(database_url, sslmode="require") as conn:
             with conn.cursor() as cursor:
-                cursor.execute(query)
+                cursor.execute(query, {"guild_id": guild_id, "value": value})
             conn.commit()
     finally:
         conn.close()

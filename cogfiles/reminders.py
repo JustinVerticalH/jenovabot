@@ -21,16 +21,15 @@ class Reminder:
     def __str__(self):
         return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
 
-    def to_json(self) -> str:
-        """Covnert the current reminder object to a JSON string."""
+    def to_json(self) -> dict[str, int | float | str]:
+        """Convert the current reminder object to a JSON string."""
 
-        json_obj = {
+        return {
             "channel_id": self.command_message.channel.id,
             "command_message_id": self.command_message.id,
             "reminder_timestamp": self.reminder_datetime.timestamp(),
             "reminder_str": self.reminder_str
         }
-        return json.dumps(json_obj)
 
     @staticmethod
     async def from_json(bot: commands.Bot, json_obj: dict[str, int | float | str]):
@@ -181,5 +180,5 @@ class Reminders(commands.Cog, name="Reminders"):
 
         for guild in self.bot.guilds:
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
-                write_sql(DATABASE_SETTINGS, guild.id, "reminders", f"array{[reminder.to_json() for reminder in self.reminders[guild.id]]}::json[]")
+                write_sql(DATABASE_SETTINGS, guild.id, "reminders", [reminder.to_json() for reminder in self.reminders[guild.id]])
                 self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
