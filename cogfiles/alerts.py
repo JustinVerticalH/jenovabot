@@ -1,7 +1,7 @@
 from ioutils import read_sql, write_sql, DATABASE_SETTINGS
 
 import discord, datetime
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.utils import format_dt
 
 
@@ -10,38 +10,66 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.already_pinged_events = set()
+        self.yet_to_ping: set[discord.ScheduledEvent] = set()
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        for guild in self.bot.guilds:
+            for event in await guild.fetch_scheduled_events():
+                await self.create_wait_until_announcement_task(event)
+                self.yet_to_ping.add(event)
 
     @commands.Cog.listener()
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
         """Send a ping message when an event tied to a role is created."""
+        await self.send_event_start_time_message(event)
 
+    @commands.Cog.listener()
+    async def on_scheduled_event_update(self, before: discord.ScheduledEvent, after: discord.ScheduledEvent):
+        if before.start_time != after.start_time:
+            await self.send_event_start_time_message(after, rescheduling=True)
+    
+    async def send_event_start_time_message(self, event: discord.ScheduledEvent, *, rescheduling: bool = False):
         role = EventAlerts.get_role_from_event(event)
         if role is None:
             return
         
         channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
-        await channel.send(f"{event.name} is set for {format_dt(event.start_time, style='F')}! {role.mention}")
+        await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention}")
+
+        await self.create_wait_until_announcement_task(event)
+        self.yet_to_ping.add(event)
+    
+    async def create_wait_until_announcement_task(self, event: discord.ScheduledEvent):
+        event = await event.guild.fetch_scheduled_event(event.id)
+
+        @tasks.loop(time=(event.start_time - datetime.timedelta(minutes=30)).timetz())
+        async def wait_until_announcement():
+            if datetime.datetime.now(event.start_time.tzinfo).date() == event.start_time.date():
+                event_creator = await event.guild.fetch_member(event.creator.id)
+                if isinstance(event_creator, discord.Member) and event_creator.voice is not None:
+                    await self.send_event_is_starting_message(event)
+                    wait_until_announcement.stop()
+
+        wait_until_announcement.start()
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         if not (before.channel is None and after.channel is not None): # Member has joined a voice channel
             return
         
-        events = await member.guild.fetch_scheduled_events()
-        for event in events:
-            if event not in self.already_pinged_events and event.creator.id == member.id:
-                role = EventAlerts.get_role_from_event(event)
-                time_until_event_start = event.start_time - datetime.datetime.now().astimezone(event.start_time.tzinfo)
-                if time_until_event_start <= datetime.timedelta(minutes = 30):
-                    channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
-                    await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}")
-                    self.already_pinged_events.add(event)
-
-    @commands.Cog.listener()
-    async def on_scheduled_event_update(self, before: discord.ScheduledEvent, after: discord.ScheduledEvent):
-        if before.status == discord.EventStatus.active and after.status == discord.EventStatus.completed: # Event has just finished
-            self.already_pinged_events.remove(before)
+        for event in self.yet_to_ping.copy():
+            event = await event.guild.fetch_scheduled_event(event.id)
+            if event.creator.id == member.id:
+                await self.send_event_is_starting_message(event)
+    
+    async def send_event_is_starting_message(self, event: discord.ScheduledEvent):
+        role = EventAlerts.get_role_from_event(event)
+        time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
+        if time_until_event_start <= datetime.timedelta(minutes=30):
+            channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+            await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}")
+            self.yet_to_ping.remove(event)
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
