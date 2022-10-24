@@ -15,11 +15,14 @@ class Reminder:
     reminder_datetime: datetime.datetime
     reminder_str: str = field(compare=False)
 
-    def __repr__(self):
-        return f"Reminder in {self.command_message.channel.mention} by {self.command_message.author.name} for {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
-
     def __str__(self):
-        return f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
+        return f"{self.command_message.author.mention} - {self.command_message.channel.mention} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
+
+    def __repr__(self):
+        out = f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
+        if len(out) > 100:
+            out = out[:97] + "..."
+        return out
 
     def to_json(self) -> dict[str, int | float | str]:
         """Convert the current reminder object to a JSON string."""
@@ -48,11 +51,11 @@ class ReminderCancelSelect(discord.ui.Select):
         self.bot = context.bot
         self.reminders = reminders
 
-        options = [discord.SelectOption(label=str(reminder)) for reminder in sorted(reminders)]
+        options = [discord.SelectOption(label=repr(reminder)) for reminder in sorted(reminders)]
         super().__init__(placeholder="Select reminders to cancel...", max_values=len(reminders), options=options)
     
     async def callback(self, interaction: discord.Interaction):
-        cancelled_reminders = {reminder for reminder in self.reminders if str(reminder) in self.values}
+        cancelled_reminders = {reminder for reminder in self.reminders if repr(reminder) in self.values}
         self.bot.get_cog("Reminders").reminders[interaction.guild_id] -= cancelled_reminders
 
         cancelled_reminder_list = RandomColorEmbed(
