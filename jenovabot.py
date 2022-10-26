@@ -13,7 +13,7 @@ from cogfiles.announcements import Announcements
 from cogfiles.music import Music
 from cogfiles.web_scrapers import WebScrapers
 from cogfiles.polling import Polling
-from cogfiles.birthdays import Birthdays
+
 
 def main():
     load_dotenv()
@@ -25,7 +25,7 @@ def main():
     intents = discord.Intents.all()
     bot = commands.Bot(command_prefix=command_prefix, activity=activity, intents=intents, enable_debug_events=True)
 
-    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), WebScrapers(bot), Polling(bot), Birthdays(bot)
+    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), WebScrapers(bot), Polling(bot)
     for cog in cogs:
         asyncio.run(bot.add_cog(cog))
 
