@@ -66,23 +66,21 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
                             # Send birthday message in the correct channel
                             user = await self.bot.fetch_user(user_id)
-                            channel = self.bot.get_channel(channel_id)
+                            channel = await self.bot.fetch_channel(channel_id)
                             age = now.year - birthday.year
                             if age == 0:
                                 await channel.send(f"Happy birthday {user.mention}!")
                             else:
-                                await channel.send(f"Happy {Birthdays.ordinal(age)} birthday {user.mention}!")              
+                                await channel.send(f"Happy {ordinal(age)} birthday {user.mention}!")              
 
-    @staticmethod
-    def ordinal(n: int) -> str:
-        n_str = str(n)
-        last_char = n_str[-1]
-        if n_str in ["11", "12", "13"]:
-            return n_str + "th"
-        if last_char == "1":
-            return n_str + "st"
-        if last_char == "2":
-            return n_str + "nd"
-        if last_char == "3":
-            return n_str + "rd"
-        return n_str + "th"
+
+def ordinal(n: int) -> str:
+    if n % 100 == 11 or n % 100 == 12 or n % 100 == 13:
+        return f"{n}th"
+    if n % 10 == 1:
+        return f"{n}st"
+    if n % 10 == 2:
+        return f"{n}nd"
+    if n % 10 == 3:
+        return f"{n}rd"
+    return f"{n}th"
