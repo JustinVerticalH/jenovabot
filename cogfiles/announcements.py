@@ -33,7 +33,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
-    @tasks.loop(time=datetime.time(hour=17, tzinfo=pytz.timezone("US/Eastern"))) # 5:00 PM EST
+    @tasks.loop(time=datetime.time(hour=17, minute=0, second=0, tzinfo=pytz.timezone("US/Eastern"))) # 5:00 PM EST
     async def ninja_troll(self):
         """Send periodic announcement messages at their appropriate times."""
         
@@ -46,7 +46,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                 channel = await self.bot.fetch_channel(channel_id)
                 await channel.send(file=discord.File("ninja_troll.png"))
 
-    @tasks.loop(time=datetime.time(hour=0, tzinfo=pytz.timezone("US/Eastern"))) # 12:00 AM EST
+    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=pytz.timezone("US/Eastern"))) # 12:00 AM EST
     async def first_of_the_month(self):
         """Send periodic announcement messages at their appropriate times."""
         
