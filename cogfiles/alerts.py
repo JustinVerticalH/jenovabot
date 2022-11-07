@@ -35,7 +35,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             return
         
         channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
-        await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention}")
+        await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention} \n{event.url}")
 
         await self.create_wait_until_announcement_task(event)
         self.yet_to_ping.add(event)
@@ -68,7 +68,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
         if time_until_event_start <= datetime.timedelta(minutes=30):
             channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
-            await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}")
+            await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention} \n{event.url}")
             self.yet_to_ping.remove(event)
 
     @commands.command()
