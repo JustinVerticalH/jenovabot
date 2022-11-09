@@ -10,7 +10,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.birthdays: dict[int, dict[int, datetime.date]] = {}
+        self.birthdays: dict[int, dict[int, str]] = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -30,6 +30,10 @@ class Birthdays(commands.Cog, name="Birthdays"):
     async def birthday(self, context: commands.Context, *, date_str: str):
         """Registers a user's birthday, given a month, day, and optional year."""
         date = parse(date_str).date()
+        now = datetime.datetime.now(tzinfo=pytz.timezone("US/Eastern"))
+        if (date.year == now.year):
+            date.year = 0
+        
         if self.birthdays[context.guild.id] is None:
             self.birthdays[context.guild.id] = {}
         self.birthdays[context.guild.id][str(context.author.id)] = date.isoformat()
@@ -50,28 +54,27 @@ class Birthdays(commands.Cog, name="Birthdays"):
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
-    @tasks.loop(seconds=1)
+    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=pytz.timezone("US/Eastern"))) # 12:00 AM EST
     async def send_birthday_message(self):
         """Sends a message to users on their birthday at midnight EST."""
-        now = datetime.datetime.now(pytz.timezone("US/Eastern"))
-        if now.hour == 0 and now.minute == 0 and now.second == 0: # Start of the day
-            for guild in self.bot.guilds:
-                channel_id = read_sql(DATABASE_SETTINGS, guild.id, "birthday_channel_id")
-                if channel_id is not None:
-                    guild_birthdays = self.birthdays[guild.id]
-                    for user_birthdays in guild_birthdays.items():
-                        user_id = int(user_birthdays[0])
-                        birthday = datetime.datetime.strptime(user_birthdays[1], "%Y-%m-%d")
-                        if birthday.month == now.month and birthday.day == now.day:
-
-                            # Send birthday message in the correct channel
-                            user = await self.bot.fetch_user(user_id)
-                            channel = await self.bot.fetch_channel(channel_id)
-                            age = now.year - birthday.year
-                            if age == 0:
-                                await channel.send(f"Happy birthday {user.mention}!")
-                            else:
-                                await channel.send(f"Happy {ordinal(age)} birthday {user.mention}!")              
+        for guild in self.bot.guilds:
+            channel_id = read_sql(DATABASE_SETTINGS, guild.id, "birthday_channel_id")
+            if channel_id is None:
+                return
+            
+            for user_id, birthday_iso in self.birthdays[guild.id].items():
+                birthday = datetime.datetime.strptime(birthday_iso, "%Y-%m-%d")
+                now = datetime.datetime.now(tzinfo=pytz.timezone("US/Eastern"))
+                if birthday.month == now.month and birthday.day == now.day:
+                    # Send birthday message in the correct channel
+                    user = await self.bot.fetch_user(user_id)
+                    channel = await self.bot.fetch_channel(channel_id)
+                    
+                    if birthday.year == 0:
+                        await channel.send(f"Happy birthday {user.mention}!")
+                    else:
+                        age = now.year - birthday.year
+                        await channel.send(f"Happy {ordinal(age)} birthday {user.mention}!")
 
 
 def ordinal(n: int) -> str:
