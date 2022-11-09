@@ -89,6 +89,6 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     @staticmethod
     def get_role_from_event(event: discord.ScheduledEvent) -> discord.Role:
         for role in event.guild.roles:
-            if "Ping" in role.name and role.name.replace(" Ping", "") in event.name:
+            if " ping" in role.name.lower() and role.name.lower().replace(" ping", "") in event.name.lower():
                 return role
         return None
