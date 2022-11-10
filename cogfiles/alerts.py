@@ -36,7 +36,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         
         channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
         if isinstance(channel, discord.ForumChannel):
-                channel = EventAlerts.get_channel_from_role(channel, role)
+            channel = EventAlerts.get_channel_from_role(channel, role)
         await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention} \n{event.url}")
 
         await self.create_wait_until_announcement_task(event)
@@ -100,13 +100,11 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     def get_channel_from_role(channel: discord.TextChannel | discord.ForumChannel, role: discord.Role) -> discord.TextChannel | discord.Thread:
         if isinstance(channel, discord.ForumChannel):
             for thread in channel.threads:
-                for role in channel.guild.roles:
-                    if EventAlerts.matches_role(thread, role):
-                        return thread
+                if EventAlerts.matches_role(thread, role):
+                    return thread
         else:
-            for role in channel.guild.roles:
-                if EventAlerts.matches_role(channel, role):
-                    return channel
+            if EventAlerts.matches_role(channel, role):
+                return channel
         return None
 
     @staticmethod
