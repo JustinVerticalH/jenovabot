@@ -35,6 +35,8 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             return
         
         channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+        if isinstance(channel, discord.ForumChannel):
+                channel = EventAlerts.get_channel_from_role(channel, role)
         await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention} \n{event.url}")
 
         await self.create_wait_until_announcement_task(event)
@@ -67,13 +69,15 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         role = EventAlerts.get_role_from_event(event)
         time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
         if time_until_event_start <= datetime.timedelta(minutes=30):
-            channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+            #channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+            if isinstance(channel, discord.ForumChannel):
+                channel = EventAlerts.get_channel_from_role(channel, role)
             await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention} \n{event.url}")
             self.yet_to_ping.remove(event)
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
-    async def alerts(self, context: commands.Context, channel: discord.TextChannel):
+    async def alerts(self, context: commands.Context, channel: discord.TextChannel | discord.ForumChannel):
         """Set which channel to send event alert ping messages."""
 
         write_sql(DATABASE_SETTINGS, context.guild.id, "scheduled_event_alert_channel_id", channel.id)
@@ -89,6 +93,23 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     @staticmethod
     def get_role_from_event(event: discord.ScheduledEvent) -> discord.Role:
         for role in event.guild.roles:
-            if " ping" in role.name.lower() and role.name.lower().replace(" ping", "") in event.name.lower():
+            if EventAlerts.matches_role(event, role):                
                 return role
         return None
+
+    @staticmethod
+    def get_channel_from_role(channel: discord.TextChannel | discord.ForumChannel, role: discord.Role) -> discord.TextChannel | discord.Thread:
+        if isinstance(channel, discord.ForumChannel):
+            for thread in channel.threads:
+                for role in channel.guild.roles:
+                    if EventAlerts.matches_role(thread, role):
+                        return thread
+        else:
+            for role in channel.guild.roles:
+                if EventAlerts.matches_role(channel, role):
+                    return channel
+        return None
+
+    @staticmethod
+    def matches_role(channel: discord.TextChannel | discord.Thread | discord.ScheduledEvent, role: discord.Role) -> bool:
+        return " ping" in role.name.lower() and role.name.lower().replace(" ping", "") in channel.name.lower()
