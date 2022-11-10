@@ -61,7 +61,6 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             return
         
         for event in self.yet_to_ping.copy():
-            event = await event.guild.fetch_scheduled_event(event.id)
             if event.creator.id == member.id:
                 await self.send_event_is_starting_message(event)
     
@@ -69,7 +68,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         role = EventAlerts.get_role_from_event(event)
         time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
         if time_until_event_start <= datetime.timedelta(minutes=30):
-            #channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+            channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
             if isinstance(channel, discord.ForumChannel):
                 channel = EventAlerts.get_channel_from_role(channel, role)
             await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention} \n{event.url}")
