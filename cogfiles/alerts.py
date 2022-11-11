@@ -61,7 +61,8 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             return
         
         for event in self.yet_to_ping.copy():
-            if event.creator.id == member.id:
+            event_creator = await EventAlerts.get_event_creator(event)
+            if event_creator.id == member.id:
                 await self.send_event_is_starting_message(event)
     
     async def send_event_is_starting_message(self, event: discord.ScheduledEvent):
@@ -88,6 +89,11 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             await context.send("User needs Manage Server permission to use this command.")
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
+
+    @staticmethod
+    async def get_event_creator(event: discord.ScheduledEvent):
+        fetched_event = await event.guild.fetch_scheduled_event(event.id)
+        return await fetched_event.guild.fetch_member(fetched_event.creator.id)
 
     @staticmethod
     def get_role_from_event(event: discord.ScheduledEvent) -> discord.Role:
