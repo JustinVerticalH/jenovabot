@@ -61,6 +61,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             return
         
         for event in self.yet_to_ping.copy():
+            event = await event.guild.fetch_scheduled_event(event.id)
             event_creator = await EventAlerts.get_event_creator(event)
             if event_creator.id == member.id:
                 await self.send_event_is_starting_message(event)
