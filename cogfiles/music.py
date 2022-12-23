@@ -1,9 +1,12 @@
-import discord, wavelink
+import discord, os, wavelink
 
 from ioutils import RandomColorEmbed
 from discord.ext import commands
 
 SKIPPING = object()
+LAVALINK_HOST = os.getenv("LAVALINK_HOST")
+LAVALINK_PORT = int(os.getenv("LAVALINK_PORT"))
+LAVALINK_PASS = os.getenv("LAVALINK_PASS")
 
 class Music(commands.Cog, name="Music"):
     """Play music in a voice channel."""
@@ -25,7 +28,7 @@ class Music(commands.Cog, name="Music"):
         """Connect to the Lavalink nodes."""
         
         await self.bot.wait_until_ready()
-        await wavelink.NodePool.create_node(bot=self.bot, host="lavalink.oops.wtf", port=2000, password="www.freelavalink.ga")
+        await wavelink.NodePool.create_node(bot=self.bot, host=LAVALINK_HOST, port=LAVALINK_PORT, password=LAVALINK_PASS)
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node):
