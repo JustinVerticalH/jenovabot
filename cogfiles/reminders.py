@@ -1,6 +1,6 @@
-import datetime, json, re
+import datetime, re
 from dataclasses import dataclass, field
-from ioutils import RandomColorEmbed, read_sql, write_sql, DATABASE_SETTINGS
+from ioutils import RandomColorEmbed, read_json, write_json
 
 import discord
 from discord.ext import commands, tasks
@@ -83,21 +83,21 @@ class Reminders(commands.Cog, name="Reminders"):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize the reminders instance dictionary from SQL data and start the reminder processing loop."""
+        """Initialize the reminders instance dictionary from JSON data and start the reminder processing loop."""
 
         for guild in self.bot.guilds:
-            if read_sql(DATABASE_SETTINGS, guild.id, "reminders") is None:
-                write_sql(DATABASE_SETTINGS, guild.id, "reminders", "array[[]]::json[]")
-            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_sql(DATABASE_SETTINGS, guild.id, "reminders")}
+            if read_json(guild.id, "reminders") is None:
+                write_json(guild.id, "reminders", value={})
+            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_json(guild.id, "reminders")}
             self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
         
         self.send_reminders.start()
-        self.sync_sql.start()
+        self.sync_json.start()
  
     @commands.group(aliases=["remindme", "rm"], invoke_without_command=True)
     async def remind(self, context: commands.Context, time: str, *, reminder_str: str = ""):
         """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)"""
-
+        
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
         if not is_valid:
@@ -107,16 +107,36 @@ class Reminders(commands.Cog, name="Reminders"):
             else:
                 await context.send(f"Time string is not formatted correctly; did you mean to type {time_string_guess}?")
             return
-        reminder_datetime = datetime.datetime.now() + datetime.timedelta(days=num_days, hours=num_hours, minutes=num_minutes, seconds=num_seconds)
 
-        reminder = Reminder(context.message, reminder_datetime, reminder_str)
-        
-        if context.guild.id not in self.reminders:
-            self.reminders[context.guild.id] = set()
-        self.reminders[context.guild.id].add(reminder)
-        
+        timedelta = datetime.timedelta(days=num_days, hours=num_hours, minutes=num_minutes, seconds=num_seconds)
+        time = context.message.created_at + timedelta
+        await self.create_reminder(context.message, time, reminder_str)
         await context.message.add_reaction("👍")
     
+    @remind.command(aliases=["periodic"])
+    async def every(self, context: commands.Context, time: str, *, reminder_str: str):
+        # Determine the amount of time based on the time inputted
+        num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
+        if not is_valid:
+            time_string_guess = re.sub("0.", "", f"{num_days}d{num_hours}h{num_minutes}m{num_seconds}s")
+            if time_string_guess == "":
+                await context.send(f"Time string is not formatted correctly; not sure what you meant to type here.")
+            else:
+                await context.send(f"Time string is not formatted correctly; did you mean to type {time_string_guess}?")
+            return
+        timedelta = datetime.timedelta(days=num_days, hours=num_hours, minutes=num_minutes, seconds=num_seconds)
+        time = context.message.created_at + timedelta
+        await self.create_reminder(context.message, time, reminder_str)
+        await context.message.add_reaction("👍")
+
+    async def create_reminder(self, message: discord.Message, time: datetime.datetime, reminder_str: str):
+        "Creates a new reminder and adds it to the list of reminders."
+
+        reminder = Reminder(message, time, reminder_str)
+        if message.guild.id not in self.reminders:
+            self.reminders[message.guild.id] = set()
+        self.reminders[message.guild.id].add(reminder)
+        
     @staticmethod
     def get_datetime_parameters(time: str):
         """Convert a time string into parameters for a datetime object."""
@@ -164,7 +184,7 @@ class Reminders(commands.Cog, name="Reminders"):
         for guild in self.bot.guilds:
             reminders = self.reminders[guild.id].copy()
             for reminder in reminders:
-                if reminder.reminder_datetime <= datetime.datetime.now():
+                if reminder.reminder_datetime.timestamp() <= datetime.datetime.now().timestamp():
                     # Read the list of reactions to the message, and create a string to mention each user (besides the bot) who reacted
                     for reaction in reminder.command_message.reactions:
                         if reaction.emoji == "👍":
@@ -176,12 +196,18 @@ class Reminders(commands.Cog, name="Reminders"):
 
                     await reminder.command_message.reply(f"{reminder.reminder_str} {subscribers_mention}")
                     self.reminders[guild.id].remove(reminder)
+
+                    # If the reminder is periodic, create a new reminder with the same time interval
+                    #if reminder.periodic:
+                        #timedelta = datetime.datetime.now() - reminder.reminder_datetime
+                        #time = datetime.datetime.now() + timedelta
+                        #await self.create_reminder(reminder.command_message, time, reminder.reminder_str)
     
     @tasks.loop(seconds=0.3)
-    async def sync_sql(self):
-        """Sync with the SQL database if any changes are detected."""
+    async def sync_json(self):
+        """Sync with the JSON file if any changes are detected."""
 
         for guild in self.bot.guilds:
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
-                write_sql(DATABASE_SETTINGS, guild.id, "reminders", [reminder.to_json() for reminder in self.reminders[guild.id]])
+                write_json(guild.id, "reminders", value=[reminder.to_json() for reminder in self.reminders[guild.id]])
                 self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
