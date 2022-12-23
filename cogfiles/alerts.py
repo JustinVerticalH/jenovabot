@@ -1,5 +1,4 @@
-from ioutils import read_sql, write_sql, DATABASE_SETTINGS
-
+from ioutils import read_json, write_json
 import discord, datetime
 from discord.ext import commands, tasks
 from discord.utils import format_dt
@@ -34,7 +33,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         if role is None:
             return
         
-        channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+        channel = await event.guild.fetch_channel(read_json(event.guild.id, "scheduled_event_alert_channel_id"))
         if isinstance(channel, discord.ForumChannel):
             channel = EventAlerts.get_channel_from_role(channel, role)
         await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention} \n{event.url}")
@@ -70,7 +69,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         role = EventAlerts.get_role_from_event(event)
         time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
         if time_until_event_start <= datetime.timedelta(minutes=30):
-            channel = await event.guild.fetch_channel(read_sql(DATABASE_SETTINGS, event.guild.id, "scheduled_event_alert_channel_id"))
+            channel = await event.guild.fetch_channel(read_json(event.guild.id, "scheduled_event_alert_channel_id"))
             if isinstance(channel, discord.ForumChannel):
                 channel = EventAlerts.get_channel_from_role(channel, role)
             await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention} \n{event.url}")
@@ -81,7 +80,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     async def alerts(self, context: commands.Context, channel: discord.TextChannel | discord.ForumChannel):
         """Set which channel to send event alert ping messages."""
 
-        write_sql(DATABASE_SETTINGS, context.guild.id, "scheduled_event_alert_channel_id", channel.id)
+        write_json(context.guild.id, "scheduled_event_alert_channel_id", value=channel.id)
         await context.send(f"Event alert channel is set to {channel.mention}")
     
     @alerts.error

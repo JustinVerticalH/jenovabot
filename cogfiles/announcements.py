@@ -1,5 +1,5 @@
 import datetime, pytz
-from ioutils import read_sql, write_sql, DATABASE_SETTINGS
+from ioutils import read_json, write_json
 
 import discord
 from discord.ext import commands, tasks
@@ -23,7 +23,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     async def announcements(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
         
-        write_sql(DATABASE_SETTINGS, context.guild.id, "periodic_announcement_channel_id", channel.id)
+        write_json(context.guild.id, "periodic_announcement_channel_id", value=channel.id)
         await context.send(f"Periodic announcement channel is set to {channel.mention}")
 
     @announcements.error
@@ -41,7 +41,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             return
         
         for guild in self.bot.guilds:
-            channel_id = read_sql(DATABASE_SETTINGS, guild.id, "periodic_announcement_channel_id")
+            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
                 await channel.send(file=discord.File("ninja_troll.png"))
@@ -54,7 +54,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             return
         
         for guild in self.bot.guilds:
-            channel_id = read_sql(DATABASE_SETTINGS, guild.id, "periodic_announcement_channel_id")
+            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
                 await channel.send(file=discord.File("first_of_the_month.mov"))

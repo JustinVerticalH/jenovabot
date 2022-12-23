@@ -1,5 +1,5 @@
-import datetime, json, pytz
-from ioutils import read_sql, write_sql, DATABASE_SETTINGS
+import datetime, pytz
+from ioutils import read_json, write_json
 from dateutil.parser import parse
 
 import discord
@@ -16,9 +16,9 @@ class Birthdays(commands.Cog, name="Birthdays"):
     async def on_ready(self):
         """Initialize the list of birthdays."""
         for guild in self.bot.guilds:
-            guild_birthdays = read_sql(DATABASE_SETTINGS, guild.id, "birthdays")
+            guild_birthdays = read_json(guild.id, "birthdays")
             if guild_birthdays is None:
-                write_sql(DATABASE_SETTINGS, guild.id, "birthdays", json.dumps({}))
+                write_json(guild.id, "birthdays", value={})
                 self.birthdays[guild.id] = {}
             else:
                 self.birthdays[guild.id] = guild_birthdays
@@ -30,21 +30,21 @@ class Birthdays(commands.Cog, name="Birthdays"):
     async def birthday(self, context: commands.Context, *, date_str: str):
         """Registers a user's birthday, given a month, day, and optional year."""
         date = parse(date_str).date()
-        now = datetime.datetime.now(tzinfo=pytz.timezone("US/Eastern"))
+        now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
         if (date.year == now.year):
-            date.year = 0
+            date = datetime.date(year=datetime.MINYEAR, month=date.month, day=date.day)
         
         if self.birthdays[context.guild.id] is None:
             self.birthdays[context.guild.id] = {}
         self.birthdays[context.guild.id][str(context.author.id)] = date.isoformat()
-        write_sql(DATABASE_SETTINGS, context.guild.id, "birthdays", json.dumps(self.birthdays[context.guild.id]))
+        write_json(context.guild.id, "birthdays", value=self.birthdays[context.guild.id])
         await context.message.add_reaction("👍")
 
     @birthday.command()
     @commands.has_guild_permissions(manage_guild=True)
     async def channel(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send event alert ping messages."""
-        write_sql(DATABASE_SETTINGS, context.guild.id, "birthday_channel_id", channel.id)
+        write_json(context.guild.id, "birthday_channel_id", value=channel.id)
         await context.message.add_reaction("👍")
 
     @channel.error
@@ -58,19 +58,19 @@ class Birthdays(commands.Cog, name="Birthdays"):
     async def send_birthday_message(self):
         """Sends a message to users on their birthday at midnight EST."""
         for guild in self.bot.guilds:
-            channel_id = read_sql(DATABASE_SETTINGS, guild.id, "birthday_channel_id")
+            channel_id = read_json(guild.id, "birthday_channel_id")
             if channel_id is None:
-                return
+                continue
             
             for user_id, birthday_iso in self.birthdays[guild.id].items():
                 birthday = datetime.datetime.strptime(birthday_iso, "%Y-%m-%d")
-                now = datetime.datetime.now(tzinfo=pytz.timezone("US/Eastern"))
+                now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
                 if birthday.month == now.month and birthday.day == now.day:
                     # Send birthday message in the correct channel
                     user = await self.bot.fetch_user(user_id)
                     channel = await self.bot.fetch_channel(channel_id)
                     
-                    if birthday.year == 0:
+                    if birthday.year == datetime.MINYEAR:
                         await channel.send(f"Happy birthday {user.mention}!")
                     else:
                         age = now.year - birthday.year
