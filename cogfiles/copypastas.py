@@ -1,6 +1,5 @@
-import discord, json, os
+import discord, json
 
-from dotenv import load_dotenv
 from discord.ext import commands
 
 
@@ -14,12 +13,12 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
     async def on_message(self, message: discord.Message):
         """Detect key phrases in messages."""
 
+        # The bot shouldn't respond to its own copypastas
         if message.author == self.bot.user:
             return
         
-        load_dotenv()
-        copypastas_json = os.getenv("COPYPASTAS")
-        copypastas = json.loads(copypastas_json)
+        with open("copypastas.json", "r") as file:
+            copypastas = json.load(file)
         for phrase in copypastas:
             if phrase in message.content.lower():
                 await message.channel.send(copypastas[phrase])
