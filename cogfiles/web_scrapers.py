@@ -3,6 +3,8 @@ import aiohttp, json, re
 from bs4 import BeautifulSoup
 from ioutils import RandomColorEmbed
 from howlongtobeatpy import HowLongToBeat
+from thefuzz import process
+
 from discord.ext import commands
 
 class WebScrapers(commands.Cog, name="Web Scrapers"):
@@ -145,3 +147,26 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 response_json = json.loads(response_text)
                 response_url = response_json["data"]["Media"]["siteUrl"]
                 await context.send(response_url)
+    
+    @commands.command()
+    async def vndb(self, context: commands.Context, *, vn_name: str):
+        vn_request_data = f"""{{
+            "filters": ["search", "=", "{vn_name}"],
+            "fields": "id, title, image.url, image.sexual, image.violence, description"
+        }}"""
+
+        async with aiohttp.ClientSession(headers={'Content-Type': 'application/json'}) as session:
+            async with session.post("https://api.vndb.org/kana/vn", data=vn_request_data) as response:
+                results = (await response.json())["results"]
+            
+            vn, _ = process.extractOne(vn_name, results, processor=lambda vn: vn if vn == vn_name else vn["title"])
+
+        vn["description"] = re.sub(r"\[url=(.*)\](.*)\[\/url\]", r"[\2](\1)", vn["description"])
+        if len(vn["description"]) > 4096:
+            vn["description"] = vn["description"][:4093] + "..."
+
+        vn_data = RandomColorEmbed(title=vn["title"], url=f"https://vndb.org/{vn['id']}", description=vn["description"])
+        if vn["image"]["sexual"] < 2 and vn["image"]["violence"] < 2:
+            vn_data.set_thumbnail(url=vn["image"]["url"])
+        
+        await context.send(embed=vn_data)

@@ -10,13 +10,15 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.yet_to_ping: set[discord.ScheduledEvent] = set()
+        self.wait_until_announcement_tasks: dict[discord.ScheduledEvent, tasks.Loop] = {}
     
     @commands.Cog.listener()
     async def on_ready(self):
         for guild in self.bot.guilds:
             for event in await guild.fetch_scheduled_events():
-                await self.create_wait_until_announcement_task(event)
-                self.yet_to_ping.add(event)
+                if event.status == discord.EventStatus.scheduled:
+                    await self.create_wait_until_announcement_task(event)
+                    self.yet_to_ping.add(event)
 
     @commands.Cog.listener()
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
@@ -25,7 +27,9 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
 
     @commands.Cog.listener()
     async def on_scheduled_event_update(self, before: discord.ScheduledEvent, after: discord.ScheduledEvent):
-        if before.start_time != after.start_time:
+        if before.status != after.status and after.status != discord.EventStatus.scheduled:
+            self.cancel_wait_until_announcement_task(before)
+        elif before.start_time != after.start_time:
             await self.send_event_start_time_message(after, rescheduling=True)
     
     async def send_event_start_time_message(self, event: discord.ScheduledEvent, *, rescheduling: bool = False):
@@ -36,13 +40,15 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         channel = await event.guild.fetch_channel(read_json(event.guild.id, "scheduled_event_alert_channel_id"))
         if isinstance(channel, discord.ForumChannel):
             channel = EventAlerts.get_channel_from_role(channel, role)
-        await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention} \n{event.url}")
+        await channel.send(f"{event.name} {'has been rescheduled to' if rescheduling else 'is set for'} {format_dt(event.start_time, style='F')}! {role.mention}\n{event.url}")
 
         await self.create_wait_until_announcement_task(event)
         self.yet_to_ping.add(event)
     
     async def create_wait_until_announcement_task(self, event: discord.ScheduledEvent):
         event = await event.guild.fetch_scheduled_event(event.id)
+        if event in self.wait_until_announcement_tasks:
+            self.cancel_wait_until_announcement_task(event)
 
         @tasks.loop(time=(event.start_time - datetime.timedelta(minutes=30)).timetz())
         async def wait_until_announcement():
@@ -50,9 +56,10 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
                 event_creator = await event.guild.fetch_member(event.creator.id)
                 if isinstance(event_creator, discord.Member) and event_creator.voice is not None:
                     await self.send_event_is_starting_message(event)
-                    wait_until_announcement.stop()
-
-        wait_until_announcement.start()
+                    self.cancel_wait_until_announcement_task(event)
+        
+        self.wait_until_announcement_tasks[event] = wait_until_announcement
+        self.wait_until_announcement_tasks[event].start()
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -72,8 +79,13 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             channel = await event.guild.fetch_channel(read_json(event.guild.id, "scheduled_event_alert_channel_id"))
             if isinstance(channel, discord.ForumChannel):
                 channel = EventAlerts.get_channel_from_role(channel, role)
-            await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention} \n{event.url}")
+            await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}\n{event.url}")
             self.yet_to_ping.remove(event)
+    
+    def cancel_wait_until_announcement_task(self, event: discord.ScheduledEvent):
+        if event in self.wait_until_announcement_tasks:
+            self.wait_until_announcement_tasks[event].cancel()
+            del self.wait_until_announcement_tasks[event]
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)

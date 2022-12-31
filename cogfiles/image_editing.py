@@ -1,4 +1,6 @@
 import discord, os, random, tempfile, textwrap
+
+from contextlib import contextmanager
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
@@ -51,9 +53,16 @@ class ImageEditing(commands.Cog, name="Image Editing"):
                 text = textwrap.fill(text, width=44)
             draw.text((145, 120), text, fill=(255, 255, 255))
             
-            fp = tempfile.NamedTemporaryFile(suffix=".png", delete=False) 
-            fp.close()
-            image.save(fp.name)
-            f = discord.File(fp.name, filename="edit.png")
-            await context.send(file=f)
-            os.unlink(fp.name)
+            with temp_png() as temp_file:
+                image.save(temp_file.name)
+                image_file = discord.File(temp_file.name, filename="kagetsu.png")
+                await context.send(file=image_file)
+
+@contextmanager
+def temp_png():
+    try:
+        fp = tempfile.NamedTemporaryFile(suffix=".png", delete=False) 
+        fp.close()
+        yield fp
+    finally:
+        os.remove(fp.name)
