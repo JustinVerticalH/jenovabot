@@ -1,5 +1,5 @@
 .env
 .vscode
 __pycache__
-settings.json
-reminders.json
+data/data.json
+data/test_data.json
