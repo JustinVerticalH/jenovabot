@@ -24,6 +24,7 @@ class Reminder:
             out = out[:97] + "..."
         return out
 
+
     def to_json(self) -> dict[str, int | float | str]:
         """Convert the current reminder object to a JSON string."""
 
@@ -45,6 +46,10 @@ class Reminder:
         reminder_str = json_obj["reminder_str"]
 
         return Reminder(command_message, reminder_datetime, reminder_str)
+
+@staticmethod
+def sort(reminders: set[Reminder]):
+    return sorted(reminders, key=lambda r: r.reminder_datetime.timestamp(datetime.timezone.utc))
 
 class ReminderCancelSelect(discord.ui.Select):
     def __init__(self, context: commands.Context, reminders: set[Reminder]):
