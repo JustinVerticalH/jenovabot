@@ -1,4 +1,4 @@
-import discord, os, random, tempfile, textwrap
+import discord, os, random, sys, tempfile, textwrap
 
 from contextlib import contextmanager
 from discord.ext import commands
@@ -48,9 +48,11 @@ class ImageEditing(commands.Cog, name="Image Editing"):
             draw = ImageDraw.Draw(image)
             draw.font = ImageFont.truetype("image_resources/sazanami-gothic.ttf", 28)
             
-            # If the user doesn't provide line breaks, then format the text so that it 
+            # If the user doesn't provide line breaks, then format the text so that it breaks lines naturally
             if "\n" not in text:
                 text = textwrap.fill(text, width=44)
+            # Draw a layer of black text first to simulate a shadow
+            draw.text((148, 123), text, fill=(0, 0, 0))
             draw.text((145, 120), text, fill=(255, 255, 255))
             
             with temp_png() as temp_file:
