@@ -86,17 +86,16 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
             reacted_list = []
             if message.reactions:
-                reacted_list = [user async for user in message.reactions[0].users()]
+                reacted_list = [user async for user in message.reactions[0].users() if not user.bot]
 
             reacted_members = "**Reacted:**"
             not_reacted_members = "**Not Reacted:**"
 
             for member in members:
-                if not member.bot:
-                    if member in reacted_list:
-                        reacted_members += f"\n{member.name}"
-                    else:
-                        not_reacted_members += f"\n{member.name}"
+                if member in reacted_list:
+                    reacted_members += f"\n{member.mention}"
+                else:
+                    not_reacted_members += f"\n{member.mention}"
         
             embed = RandomColorEmbed(title=message.embeds[0].title, colour=message.embeds[0].colour, description=f"{reacted_members}\n\n{not_reacted_members}")
             await message.edit(embed=embed)

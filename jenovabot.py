@@ -17,7 +17,6 @@ from cogfiles.birthdays import Birthdays
 from cogfiles.image_editing import ImageEditing
 
 def main():
-    load_dotenv()
     token = os.getenv("TOKEN")
     stream_name = os.getenv("CURRENT_STREAM_NAME")
     command_prefix = os.getenv("PREFIX", default="!")

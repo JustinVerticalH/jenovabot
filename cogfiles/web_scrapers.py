@@ -82,7 +82,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                         return
                     # If the HTML has a table, then Heady is listing multiple song choices, and we choose the first one
                     else:
-                        songs = table.find_all("div", class_ = "big_link")
+                        songs = table.find_all("div", class_="big_link")
                         song_link = songs[0].find("a").get("href")
                         async with session.get(f"http://headyversion.com{song_link}") as response:
                             content = await response.read()
@@ -113,14 +113,17 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
     @commands.command()
     async def anilist(self, context: commands.Context, *, search: str):
+        """Search AniList for an anime or manga with a title matching the provided search."""
         await WebScrapers.anilist_search(context, search, anime=True, manga=True)
 
     @commands.command()
     async def anime(self, context: commands.Context, *, search: str):
+        """Search AniList for an anime with a title matching the provided search."""
         await WebScrapers.anilist_search(context, search, anime=True)
         
     @commands.command()
     async def manga(self, context: commands.Context, *, search: str):
+        """Search AniList for a manga with a title matching the provided search."""
         await WebScrapers.anilist_search(context, search, manga=True)
 
     @staticmethod

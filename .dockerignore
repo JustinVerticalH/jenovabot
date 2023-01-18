@@ -2,6 +2,5 @@
 **\.env
 **\.vscode
 **\__pycache__
-fly.toml
-data/data.json
 data/test_data.json
+data/data.json

@@ -75,8 +75,10 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     async def send_event_is_starting_message(self, event: discord.ScheduledEvent):
         role = EventAlerts.get_role_from_event(event)
         time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
+        
         if time_until_event_start <= datetime.timedelta(minutes=30):
             channel = await event.guild.fetch_channel(read_json(event.guild.id, "scheduled_event_alert_channel_id"))
+            # If the server has its event alerts channel set to a forum, then the forum should have a thread with a name matching the role
             if isinstance(channel, discord.ForumChannel):
                 channel = EventAlerts.get_channel_from_role(channel, role)
             await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}\n{event.url}")

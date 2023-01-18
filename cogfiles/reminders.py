@@ -49,14 +49,14 @@ class Reminder:
 
 @staticmethod
 def sort(reminders: set[Reminder]):
-    return sorted(reminders, key=lambda r: r.reminder_datetime.timestamp(datetime.timezone.utc))
+    return sorted(reminders, key=lambda r: r.reminder_datetime.timestamp())
 
 class ReminderCancelSelect(discord.ui.Select):
     def __init__(self, context: commands.Context, reminders: set[Reminder]):
         self.bot = context.bot
         self.reminders = reminders
 
-        options = [discord.SelectOption(label=repr(reminder)) for reminder in sorted(reminders)]
+        options = [discord.SelectOption(label=repr(reminder)) for reminder in sort(reminders)]
         super().__init__(placeholder="Select reminders to cancel...", max_values=len(reminders), options=options)
     
     async def callback(self, interaction: discord.Interaction):
@@ -65,7 +65,7 @@ class ReminderCancelSelect(discord.ui.Select):
 
         cancelled_reminder_list = RandomColorEmbed(
             title="Cancelled Reminders",
-            description='\n'.join([str(reminder) for reminder in sorted(cancelled_reminders)])
+            description='\n'.join([str(reminder) for reminder in sort(cancelled_reminders)])
         )
         await interaction.response.send_message(embed=cancelled_reminder_list, ephemeral=True)
 
@@ -165,7 +165,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
         reminder_list = RandomColorEmbed(
             title="Scheduled Reminders",
-            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[context.guild.id]))])
+            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sort(self.reminders[context.guild.id]))])
         )
         await context.send(embed=reminder_list)
 
@@ -179,7 +179,6 @@ class Reminders(commands.Cog, name="Reminders"):
         if len(filtered_reminders) == 0:
             await context.send("No reminders currently set.")
             return
-
         await context.send(view=ReminderCancelView(context, filtered_reminders))
     
     @tasks.loop(seconds=0.2)
