@@ -175,7 +175,7 @@ class Music(commands.Cog, name="Music"):
         text_channel = await self.bot.fetch_channel(text_channel_id)
 
         video_id = event.track.identifier
-        video_thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+        video_thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
         embed = RandomColorEmbed(title="Now Playing", description=f"[{event.track.title}]({event.track.uri})")
         embed.set_thumbnail(url=video_thumbnail)
