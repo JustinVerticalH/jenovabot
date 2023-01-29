@@ -9,8 +9,9 @@ import os, re
 
 import discord
 import lavalink
+
+from datetime import timedelta
 from discord.ext import commands
-from lavalink.filters import LowPass
 
 from ioutils import RandomColorEmbed
 
@@ -75,7 +76,7 @@ class LavalinkVoiceClient(discord.VoiceClient):
 
         # update the channel_id of the player to None
         # this must be done because the on_voice_state_update that would set channel_id
-        # to None doesn"t get dispatched after the disconnect
+        # to None doesn't get dispatched after the disconnect
         player.channel_id = None
         self.cleanup()
 
@@ -116,27 +117,26 @@ class Music(commands.Cog, name="Music"):
             await context.send(error.original)
             # The above handles errors thrown in this cog and shows them to the user.
             # This shouldn"t be a problem as the only errors thrown in this cog are from `ensure_voice`
-            # which contain a reason string, such as "Join a voicechannel" etc. You can modify the above
+            # which contain a reason string, such as "Join a voice channel" etc. You can modify the above
             # if you want to do things differently.
 
     async def ensure_voice(self, context):
-        """This check ensures that the bot and command author are in the same voicechannel."""
+        """This check ensures that the bot and command author are in the same voice channel."""
 
         player = self.bot.lavalink.player_manager.create(context.guild.id)
         # Create returns a player if one exists, otherwise creates.
         # This line is important because it ensures that a player always exists for a guild.
 
-        # Most people might consider this a waste of resources for guilds that aren"t playing, but this is
+        # Most people might consider this a waste of resources for guilds that aren't playing, but this is
         # the easiest and simplest way of ensuring players are created.
 
-        # These are commands that require the bot to join a voicechannel (i.e. initiating playback).
-        # Commands such as volume/skip etc don"t require the bot to be in a voicechannel so don"t need listing here.
+        # These are commands that require the bot to join a voice channel (i.e. initiating playback).
+        # Commands such as volume/skip etc don"t require the bot to be in a voice channel so don"t need listing here.
         should_connect = context.command.name in ("play",)
 
         if not context.author.voice or not context.author.voice.channel:
-            # Our cog_command_error handler catches this and sends it to the voicechannel.
-            # Exceptions allow us to "short-circuit" command invocation via checks so the
-            # execution state of the command goes no further.
+            # Our cog_command_error handler catches this and sends it to the voice channel.
+            # Exceptions allow us to "short-circuit" command invocation via checks so the execution state of the command goes no further.
             raise commands.CommandInvokeError("Join a voice channel first.")
 
         v_client = context.voice_client
@@ -158,10 +158,8 @@ class Music(commands.Cog, name="Music"):
     @lavalink.listener(lavalink.events.QueueEndEvent)
     async def on_queue_end(self, event: lavalink.events.QueueEndEvent):
         # When this track_hook receives a "QueueEndEvent" from lavalink.py, it indicates that there are no tracks left in the player"s queue.
-        # To save on resources, we can tell the bot to disconnect from the voicechannel.
-        guild_id = event.player.guild_id
-        guild = self.bot.get_guild(guild_id)
-        await guild.voice_client.disconnect(force=True)
+        # To save on resources, we can tell the bot to disconnect from the voice channel.
+        await self.cleanup(event.player)
 
     @lavalink.listener(lavalink.events.TrackStartEvent)
     async def on_track_start(self, event: lavalink.events.TrackStartEvent):
@@ -174,13 +172,19 @@ class Music(commands.Cog, name="Music"):
         text_channel_id = event.player.fetch("channel")
         text_channel = await self.bot.fetch_channel(text_channel_id)
 
-        video_id = event.track.identifier
-        video_thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+        embed = RandomColorEmbed(title="Track Started", description=f"[{event.track.title}]({event.track.uri})")
 
-        embed = RandomColorEmbed(title="Now Playing", description=f"[{event.track.title}]({event.track.uri})")
+        video_thumbnail = f"https://img.youtube.com/vi/{event.track.identifier}/hqdefault.jpg"
         embed.set_thumbnail(url=video_thumbnail)
 
         await text_channel.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """Disconnect the current voice client if the bot disconnects from a voice channel."""
+        
+        if member == self.bot.user and before.channel is not None and after.channel is None:
+            await self.cleanup(self.bot.lavalink.player_manager.get(before.channel.guild.id))
 
     @commands.command(aliases=["p"])
     async def play(self, context: commands.Context, *, query: str):
@@ -220,9 +224,16 @@ class Music(commands.Cog, name="Music"):
                 player.add(requester=context.author.id, track=track)
 
             embed.title = "Playlist Queued"
-            embed.description = f"{results.playlist_info.name} - {len(tracks)} tracks"
+            embed.description = f"[{results.playlist_info.name}]({tracks[0].uri}) - {len(tracks)} tracks"
+
+            video_thumbnail = f"https://img.youtube.com/vi/{tracks[0].identifier}/hqdefault.jpg"
+            embed.set_thumbnail(url=video_thumbnail)
+
+            await context.send(embed=embed)
+
         else:
             track = results.tracks[0]
+            player.add(requester=context.author.id, track=track)
 
             if player.is_playing:
                 # If the queue is currently empty, don't send a message about adding the track to the queue.
@@ -230,9 +241,11 @@ class Music(commands.Cog, name="Music"):
 
                 embed.title = "Track Queued"
                 embed.description = f"[{track.title}]({track.uri})"
-                await context.send(embed=embed)
 
-            player.add(requester=context.author.id, track=track)
+                video_thumbnail = f"https://img.youtube.com/vi/{track.identifier}/hqdefault.jpg"
+                embed.set_thumbnail(url=video_thumbnail)
+
+                await context.send(embed=embed)
 
         # We don"t want to call .play() if the player is playing as that will effectively skip the current track.
         if not player.is_playing:
@@ -244,21 +257,26 @@ class Music(commands.Cog, name="Music"):
         player = self.bot.lavalink.player_manager.get(context.guild.id)
 
         if not context.voice_client:
-            # We can"t disconnect, if we"re not connected.
+            # We can't disconnect, if we"re not connected.
             return await context.send("Not connected.")
 
         if not context.author.voice or (player.is_connected and context.author.voice.channel.id != int(player.channel_id)):
-            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
-            # may not disconnect the bot.
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot may not disconnect the bot.
             return await context.send("You're not in my voice channel!")
+        
+        await self.cleanup(player)
 
-        # Clear the queue to ensure old tracks don"t start playing
-        # when someone else queues something.
+    async def cleanup(self, player: lavalink.BasePlayer):
+        guild = self.bot.get_guild(player.guild_id)
+        voice_client = guild.voice_client
+
+        # Clear the queue to ensure old tracks don't start playing when someone else queues something.
         player.queue.clear()
         # Stop the current track so Lavalink consumes less resources.
         await player.stop()
         # Disconnect from the voice channel.
-        await context.voice_client.disconnect(force=True)
+        if voice_client is not None:
+            await voice_client.disconnect(force=True)
 
     @commands.command(aliases=["s"])
     async def skip(self, context: commands.Context):
@@ -315,6 +333,9 @@ class Music(commands.Cog, name="Music"):
     async def volume(self, context: commands.Context, volume: int):
         """Sets the volume of the player between 0% and 1000%."""
 
+        if not context.author.guild_permissions.manage_guild:
+            volume = min(volume, 100)
+
         player = self.bot.lavalink.player_manager.get(context.guild.id)
 
         await player.set_volume(volume)
@@ -328,17 +349,10 @@ class Music(commands.Cog, name="Music"):
         player = self.bot.lavalink.player_manager.get(context.guild.id)
         track = player.current
 
-        position = int(player.position)
+        position = timedelta(seconds=player.position // 1000)
+        duration = timedelta(seconds=track.duration // 1000)
 
-        total_seconds = position // 1000
-        minutes = total_seconds // 60
-        seconds = total_seconds % 60
-
-        track_total_seconds = track.duration // 1000
-        track_minutes = track_total_seconds // 60
-        track_seconds = track_total_seconds % 60
-
-        formatted_position = f"Progress: {minutes}:{seconds:02}/{track_minutes}:{track_seconds:02}"        
+        formatted_position = f"Progress: {position}/{duration}"        
         description = f"[{track.title}]({track.uri})\n{formatted_position}"
 
         embed = RandomColorEmbed(title="Currently Playing", description=description)
