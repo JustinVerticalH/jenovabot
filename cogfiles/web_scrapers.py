@@ -1,11 +1,17 @@
-import aiohttp, json, re
+import aiohttp, json, os, re
 
 from bs4 import BeautifulSoup
+from dateutil import parser
 from ioutils import RandomColorEmbed
 from howlongtobeatpy import HowLongToBeat
 from thefuzz import process
 
 from discord.ext import commands
+from discord.utils import format_dt
+
+ITAD_API_KEY = os.getenv("ITAD_API_KEY")
+STEAMGRIDDB_API_KEY = os.getenv("STEAMGRIDDB_API_KEY")
+EBAY_APP_NAME = os.getenv("EBAY_APP_NAME")
 
 class WebScrapers(commands.Cog, name="Web Scrapers"):
     """Grab data from various websites and send it."""
@@ -153,6 +159,8 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
     
     @commands.command()
     async def vndb(self, context: commands.Context, *, vn_name: str):
+        """Search VNDB for a visual novel matching the provided search."""
+
         vn_request_data = f"""{{
             "filters": ["search", "=", "{vn_name}"],
             "fields": "id, title, image.url, image.sexual, image.violence, description"
@@ -173,3 +181,106 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
             vn_data.set_thumbnail(url=vn["image"]["url"])
         
         await context.send(embed=vn_data)
+
+    @commands.command(aliases=["itad", "sale"])
+    async def isthereanydeal(self, context: commands.Context, *, search: str):
+        """Search IsThereAnyDeal for a game matching the provided search.
+        This command retrives the first 5 results of a search on ITAD. 
+        For each result, prints the name of the game, the sale percent and new price, and the store with that price."""
+
+        async with aiohttp.ClientSession() as session:
+            content = await WebScrapers.isthereanydeal_search(session, search)
+            if content is None:
+                return await context.send("Could not find a game with that title.")
+
+            url = content["data"]["urls"]["search"]
+
+            description = ""
+
+            valid_games = 0
+            for i in range(len(content["data"]["results"])):
+                game_plain = content["data"]["results"][i]["plain"]
+                game_title = content["data"]["results"][i]["title"]
+            
+                api = f"https://api.isthereanydeal.com/v01/game/prices/?key={ITAD_API_KEY}&plains={game_plain}"
+                async with session.post(api) as response:
+                    price_content = await response.read()
+                    price_content = json.loads(price_content)
+
+                    # Some entries in the list of results are not being sold on any stores.
+                    # Trying to find the price of these games results in an IndexError.
+                    # To avoid displaying these entries, skip over them if an IndexError occurs.
+                    # Once 5 valid entries have been found and added to the description, we are done.
+                try:
+                    price_cut = price_content["data"][game_plain]["list"][0]["price_cut"]
+                    price_new = round(price_content["data"][game_plain]["list"][0]["price_new"], 2)
+                    store_url = price_content["data"][game_plain]["list"][0]["url"]
+                    store_name = price_content["data"][game_plain]["list"][0]["shop"]["name"]
+                    game_url = price_content["data"][game_plain]["urls"]["game"]
+                    
+                    description += f"**[{game_title}]({game_url})**\n**${price_new}** ({price_cut}% Off)\n[{store_name}]({store_url})\n\n"
+
+                    valid_games += 1
+                    if valid_games >= 5:
+                        break
+
+                except IndexError:
+                    continue
+
+        embed = RandomColorEmbed(title="Is There Any Deal?", url=url, description=description)
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1005720333053075486/1066597183173959761/YWJzOi8vZGlzdC9pY29ucy9pc3RoZXJlYW55ZGVhbF8xNjU2MDgucG5n.png")
+        await context.send(embed=embed)
+
+    @staticmethod
+    async def isthereanydeal_search(session: aiohttp.ClientSession, search: str):
+        api = f"https://api.isthereanydeal.com/v02/search/search/?key={ITAD_API_KEY}&q={search}"
+        async with session.post(api) as response:
+
+            content = await response.read()
+            content = json.loads(content)
+
+            if response.status != 200 or len(content["data"]["results"]) == 0:
+                return None
+
+            return content
+
+    @commands.command()
+    async def ebay(self, context: commands.Context, *, search: str):
+        api = "https://svcs.ebay.com/services/search/FindingService/v1" \
+        f"?OPERATION-NAME=findItemsByKeywords&SECURITY-APPNAME={EBAY_APP_NAME}" \
+        f"&REST-PAYLOAD&RESPONSE-DATA-FORMAT=JSON&keywords={search}"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api) as response:
+                content = await response.read()
+                content = json.loads(content)
+
+                url = content["findItemsByKeywordsResponse"][0]["itemSearchURL"][0]
+                embed = RandomColorEmbed(title="eBay", url=url)
+                embed.set_thumbnail(url="http://www.pngpix.com/wp-content/uploads/2016/07/PNGPIX-COM-eBay-Logo-PNG-Transparent.png")
+
+                description = ""
+                for result in content["findItemsByKeywordsResponse"][0]["searchResult"][0]["item"][:5]:
+                    title = result["title"][0]
+                    url = result["viewItemURL"][0]
+                    price = f"{float(result['sellingStatus'][0]['convertedCurrentPrice'][0]['__value__']):.2f}"
+                    
+                    listing_type = result["listingInfo"][0]["listingType"][0]
+                    if listing_type == "Auction":
+                        price_info = f"Current Bid: ${price}"
+                    elif listing_type == "FixedPrice":
+                        price_info = f"Buy It Now: ${price}"
+                    elif listing_type == "AuctionWithBIN":
+                        buy_now_price = f"{float(result['listingInfo'][0]['convertedBuyItNowPrice'][0]['__value__']):.2f}"
+                        price_info = f"Current Bid: ${price}\nBuy It Now: ${buy_now_price}"
+                    else:
+                        price_info = f"${price}"
+
+                    end_time = parser.parse(result["listingInfo"][0]["endTime"][0])
+                    end_time = format_dt(end_time, style='R')
+
+                    description += f"**[{title}]({url})**\n{price_info}\nEnds {end_time}\n\n"
+
+                embed.description = description
+
+                await context.send(embed=embed)

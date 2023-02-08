@@ -1,5 +1,5 @@
 import datetime, pytz
-from ioutils import read_json, write_json
+from ioutils import read_json, write_json, RandomColorEmbed
 from dateutil.parser import parse
 
 import discord
@@ -10,7 +10,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.birthdays: dict[int, dict[int, str]] = {}
+        self.birthdays: dict[int, dict[discord.User, datetime.date]] = {}
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -21,10 +21,14 @@ class Birthdays(commands.Cog, name="Birthdays"):
                 write_json(guild.id, "birthdays", value={})
                 self.birthdays[guild.id] = {}
             else:
-                self.birthdays[guild.id] = guild_birthdays
+                self.birthdays[guild.id] = {await self.bot.fetch_user(user_id): datetime.datetime.strptime(birthday, "%Y-%m-%d").date() for user_id, birthday in guild_birthdays.items()}
 
         self.send_birthday_message.start()
 
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: discord.Guild):
+        write_json(guild.id, "birthdays", value={})
+        self.bot.birthdays[guild.id] = {}
 
     @commands.group(invoke_without_command=True)
     async def birthday(self, context: commands.Context, *, date_str: str):
@@ -36,8 +40,8 @@ class Birthdays(commands.Cog, name="Birthdays"):
         
         if self.birthdays[context.guild.id] is None:
             self.birthdays[context.guild.id] = {}
-        self.birthdays[context.guild.id][str(context.author.id)] = date.isoformat()
-        write_json(context.guild.id, "birthdays", value=self.birthdays[context.guild.id])
+        self.birthdays[context.guild.id][context.author] = date
+        write_json(context.guild.id, "birthdays", value={user.id: birthday.isoformat() for user, birthday in self.birthdays[context.guild.id].items()})
         await context.message.add_reaction("👍")
 
     @birthday.command()
@@ -54,6 +58,28 @@ class Birthdays(commands.Cog, name="Birthdays"):
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
+    @commands.command()
+    async def nextbirthdays(self, context: commands.Context):
+
+        # Sort the birthday dates by month and day only, not year
+        # Split the dates into two groups: dates that have already happened this year, and dates that haven't
+        # Add the dates that have already happened after the dates that haven't
+        # This gives a list of upcoming birthdays in sorted order, including some dates from next year after this year
+
+        now = datetime.datetime.now().date()
+        next_birthdays = {user: birthday.replace(year=now.year) for user, birthday in self.birthdays[context.guild.id].items()}
+        sorted_birthdays = {user: birthday for user, birthday in sorted(next_birthdays.items(), key=lambda item: item[1])}
+        sorted_birthdays = {user: birthday for user, birthday in sorted_birthdays.items() if now < birthday} | {user: birthday.replace(year=now.year+1) for user, birthday in sorted_birthdays.items() if now >= birthday}
+
+        description = ""
+        n = min(10, len(sorted_birthdays.values()))
+        for user, birthday in list(sorted_birthdays.items())[:n]:
+            birthday_str = f"{birthday.strftime('%B')} {ordinal(int(birthday.strftime('%d')))}, {birthday.strftime('%Y')}"
+            description += f"**{birthday_str}**\n{user.mention}\n\n"
+
+        embed = RandomColorEmbed(title="Upcoming Birthdays", description=description)
+        await context.send(embed=embed)
+
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=pytz.timezone("US/Eastern"))) # 12:00 AM EST
     async def send_birthday_message(self):
         """Sends a message to users on their birthday at midnight EST."""
@@ -62,12 +88,10 @@ class Birthdays(commands.Cog, name="Birthdays"):
             if channel_id is None:
                 continue
             
-            for user_id, birthday_iso in self.birthdays[guild.id].items():
-                birthday = datetime.datetime.strptime(birthday_iso, "%Y-%m-%d")
+            for user, birthday in self.birthdays[guild.id].items():
                 now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
                 if birthday.month == now.month and birthday.day == now.day:
                     # Send birthday message in the correct channel
-                    user = await self.bot.fetch_user(user_id)
                     channel = await self.bot.fetch_channel(channel_id)
                     
                     if birthday.year == datetime.MINYEAR:
