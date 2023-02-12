@@ -161,6 +161,11 @@ class Music(commands.Cog, name="Music"):
         # To save on resources, we can tell the bot to disconnect from the voice channel.
         await self.cleanup(event.player)
 
+        text_channel_id = event.player.fetch("channel")
+        text_channel = await self.bot.fetch_channel(text_channel_id)
+        embed = RandomColorEmbed(title="Queue Finished")
+        return await text_channel.send(embed=embed)
+
     @lavalink.listener(lavalink.events.TrackStartEvent)
     async def on_track_start(self, event: lavalink.events.TrackStartEvent):
         """Send an embed with information about the starting track."""
@@ -173,7 +178,6 @@ class Music(commands.Cog, name="Music"):
         text_channel = await self.bot.fetch_channel(text_channel_id)
 
         embed = RandomColorEmbed(title="Track Started", description=f"[{event.track.title}]({event.track.uri})")
-
         video_thumbnail = f"https://img.youtube.com/vi/{event.track.identifier}/hqdefault.jpg"
         embed.set_thumbnail(url=video_thumbnail)
 
@@ -224,7 +228,7 @@ class Music(commands.Cog, name="Music"):
                 player.add(requester=context.author.id, track=track)
 
             embed.title = "Playlist Queued"
-            embed.description = f"[{results.playlist_info.name}]({tracks[0].uri}) - {len(tracks)} tracks"
+            embed.description = f"[{results.playlist_info.name}]({query}) - {len(tracks)} tracks"
 
             video_thumbnail = f"https://img.youtube.com/vi/{tracks[0].identifier}/hqdefault.jpg"
             embed.set_thumbnail(url=video_thumbnail)
@@ -257,7 +261,7 @@ class Music(commands.Cog, name="Music"):
         player = self.bot.lavalink.player_manager.get(context.guild.id)
 
         if not context.voice_client:
-            # We can't disconnect, if we"re not connected.
+            # We can't disconnect, if we're not connected.
             return await context.send("Not connected.")
 
         if not context.author.voice or (player.is_connected and context.author.voice.channel.id != int(player.channel_id)):
@@ -279,7 +283,7 @@ class Music(commands.Cog, name="Music"):
             await voice_client.disconnect(force=True)
 
     @commands.command(aliases=["s"])
-    async def skip(self, context: commands.Context):
+    async def skip(self, context: commands.Context, track_number: int = 1):
         """Skips the currently playing track. If there is another track in the queue, plays that next track."""
 
         player = self.bot.lavalink.player_manager.get(context.guild.id)
@@ -299,7 +303,14 @@ class Music(commands.Cog, name="Music"):
             return await context.send("No tracks currently queued.")
 
         track_list = [player.current, *player.queue]
-        track_names = "\n".join([f"{i+1}. [{track.title}]({track.uri})" for i, track in enumerate(track_list)])
+        track_names = "\n".join([f"{i+1}. [{track.title}]({track.uri})" for i, track in enumerate(track_list[:10])])
+
+        # Only print the first 10 tracks in the queue, to avoid a long message
+        if len(track_list) > 10:
+            track_names += f"\n\nPlus {len(track_list)-10} more..."
+
+        if len(track_names) > 4096:
+            track_names = track_names[:4093] + "..."
 
         embed = RandomColorEmbed(title="Queue", description=track_names)
         await context.send(embed=embed)
@@ -319,7 +330,8 @@ class Music(commands.Cog, name="Music"):
 
     @commands.command()
     async def stop(self, context: commands.Context):
-        
+        """Stops the player and clears the queue without disconnecting the bot from the voice channel."""
+
         player = self.bot.lavalink.player_manager.get(context.guild.id)
 
         if player.current is None:
@@ -328,6 +340,27 @@ class Music(commands.Cog, name="Music"):
         await player.stop()
         embed = RandomColorEmbed(title="Stopping")
         await context.send(embed=embed)
+
+    @commands.command()
+    async def remove(self, context: commands.Context, track_number: int = 1):
+        """Removes the track at a given position from the queue."""
+
+        player = self.bot.lavalink.player_manager.get(context.guild.id)
+
+        if track_number < 1:
+            return await context.send("Invalid track number. Track number must be at least 1.")
+        elif track_number > len(player.queue) + 1:
+            return await context.send("Invalid track number. Track number cannot be more than the number of tracks in the queue.")
+        elif track_number == 1:
+            await player.skip()
+        else:
+            track = player.queue[track_number-2]
+            embed = RandomColorEmbed(title="Track Removed", description=f"[{track.title}]({track.uri})")
+            video_thumbnail = f"https://img.youtube.com/vi/{track.identifier}/hqdefault.jpg"
+            embed.set_thumbnail(url=video_thumbnail)
+        
+            await context.send(embed=embed)
+            del player.queue[track_number-2]
 
     @commands.command()
     async def volume(self, context: commands.Context, volume: int):
