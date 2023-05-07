@@ -1,4 +1,4 @@
-import datetime, pytz
+import datetime, zoneinfo
 from ioutils import read_json, write_json, RandomColorEmbed
 from dateutil.parser import parse
 
@@ -34,7 +34,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
     async def birthday(self, context: commands.Context, *, date_str: str):
         """Registers a user's birthday, given a month, day, and optional year."""
         date = parse(date_str).date()
-        now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
+        now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("US/Eastern"))
         if (date.year == now.year):
             date = datetime.date(year=datetime.MINYEAR, month=date.month, day=date.day)
         
@@ -80,7 +80,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         embed = RandomColorEmbed(title="Upcoming Birthdays", description=description)
         await context.send(embed=embed)
 
-    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=pytz.timezone("US/Eastern"))) # 12:00 AM EST
+    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def send_birthday_message(self):
         """Sends a message to users on their birthday at midnight EST."""
         for guild in self.bot.guilds:
@@ -89,7 +89,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
                 continue
             
             for user, birthday in self.birthdays[guild.id].items():
-                now = datetime.datetime.now(tz=pytz.timezone("US/Eastern"))
+                now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("US/Eastern"))
                 if birthday.month == now.month and birthday.day == now.day:
                     # Send birthday message in the correct channel
                     channel = await self.bot.fetch_channel(channel_id)
