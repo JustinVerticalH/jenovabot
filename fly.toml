@@ -6,9 +6,9 @@ processes = []
 [env]
 PREFIX = "!"
 DATA_FILE = "data/data.json"
-LAVALINK_HOST = "lava1.horizxon.studio"
-LAVALINK_PORT = "80"
-LAVALINK_PASS = "horizxon.studio"
+LAVALINK_HOST = "lavalink.alexanderof.xyz"
+LAVALINK_PORT = "2333"
+LAVALINK_PASS = "lavalink"
 
 [mounts]
 source = "jenovabot_files"
