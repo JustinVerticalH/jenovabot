@@ -112,7 +112,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     @staticmethod
     def get_role_from_event(event: discord.ScheduledEvent) -> discord.Role:
         for role in event.guild.roles:
-            if EventAlerts.matches_role(event, role):                
+            if EventAlerts.matches_role(role, event=event):                
                 return role
         return None
 
@@ -120,13 +120,23 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     def get_channel_from_role(channel: discord.TextChannel | discord.ForumChannel, role: discord.Role) -> discord.TextChannel | discord.Thread:
         if isinstance(channel, discord.ForumChannel):
             for thread in channel.threads:
-                if EventAlerts.matches_role(thread, role):
+                if EventAlerts.matches_role(role, channel=thread):
                     return thread
         else:
-            if EventAlerts.matches_role(channel, role):
+            if EventAlerts.matches_role(role, channel=channel):
                 return channel
         return None
 
     @staticmethod
-    def matches_role(channel: discord.TextChannel | discord.Thread | discord.ScheduledEvent, role: discord.Role) -> bool:
-        return " ping" in role.name.lower() and role.name.lower().replace(" ping", "") in channel.name.lower()
+    def matches_role(role: discord.Role, event: discord.ScheduledEvent = None, channel: discord.TextChannel | discord.Thread = None) -> bool:
+        if " ping" not in role.name.lower():
+            return False
+        
+        if channel is not None:
+            string_to_check = channel.name
+        elif event is not None:
+            string_to_check = event.name + event.description
+        else:
+            return False
+        
+        return role.name.lower().replace(" ping", "") in string_to_check.lower()
