@@ -39,13 +39,17 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
             await self.attempt_to_finish_streampause(reaction, member, voice_channel)
 
-    @commands.command()
+    @commands.group(invoke_without_command=True)
     async def streampause(self, context: commands.Context):
         """Set up a streampause message for voice channel members to react to."""
         
         if context.author.voice is None:
             await context.send("This command is only usable inside a voice channel.")
             return
+
+        if self.streampause_data is not None:
+            await self.streampause_data["message"].delete()
+            self.streampause_data = None
 
         embed = RandomColorEmbed(
             title = "React with 👍 when you're all set!"
@@ -59,7 +63,12 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         }
 
         await message.add_reaction("👍")
-        await message.pin()
+        
+        try:
+            await message.pin()
+        except Exception:
+            pass
+
         await self.update_message(message, context.author.voice.channel)
 
     async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
@@ -99,3 +108,18 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         
             embed = RandomColorEmbed(title=message.embeds[0].title, colour=message.embeds[0].colour, description=f"{reacted_members}\n\n{not_reacted_members}")
             await message.edit(embed=embed)
+    
+    @streampause.command()
+    async def cancel(self, context: commands.Context):
+        if context.author.voice is None:
+            await context.send("This command is only usable inside a voice channel.")
+            return
+        
+        if self.streampause_data is None:
+            await context.send("Stream Pause is not currently active.")
+            return
+        
+        await context.send(f"Stream Pause cancelled.")
+
+        await self.streampause_data["message"].delete()
+        self.streampause_data = None
