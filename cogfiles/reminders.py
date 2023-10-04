@@ -196,6 +196,7 @@ class Reminders(commands.Cog, name="Reminders"):
                     for reaction in reminder.command_message.reactions:
                         if reaction.emoji == "👍":
                             subscribers = [user async for user in reaction.users()]
+                            subscribers_mention = "\n"
                             for user in subscribers:
                                 if user != self.bot.user and user != reminder.command_message.author:
                                     subscribers_mention += user.mention + " "
