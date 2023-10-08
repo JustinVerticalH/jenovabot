@@ -47,7 +47,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("image_resources/ninja_troll.png"))
+                await channel.send(file=discord.File("ninja_troll.png"))
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def first_of_the_month(self):
@@ -60,7 +60,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("image_resources/first_of_the_month.mov"))
+                await channel.send(file=discord.File("first_of_the_month.mov"))
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def umineko_video_1(self):
@@ -73,7 +73,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("image_resources/oct4day.mov"))
+                await channel.send(file=discord.File("oct4day.mov"))
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def umineko_video_2(self):
@@ -86,7 +86,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("image_resources/oct4end.mov"))
+                await channel.send(file=discord.File("oct4end.mov"))
     
     @tasks.loop(time=datetime.time(hour=8, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 8:00 AM EST
     async def umineko_video_3(self):
@@ -99,4 +99,4 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             channel_id = read_json(guild.id, "periodic_announcement_channel_id")
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("image_resources/oct5day.mov"))
+                await channel.send(file=discord.File("oct5day.mov"))
