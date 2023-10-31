@@ -1,5 +1,6 @@
-import datetime, zoneinfo
+import datetime, json, random, zoneinfo
 from ioutils import read_json, write_json
+from cogfiles.image_editing import ImageEditing
 
 import discord
 from discord.ext import commands, tasks
@@ -23,13 +24,22 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
-    async def announcements(self, context: commands.Context, channel: discord.TextChannel):
+    async def announcementchannel(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
         
         write_json(context.guild.id, "periodic_announcement_channel_id", value=channel.id)
         await context.send(f"Periodic announcement channel is set to {channel.mention}")
 
-    @announcements.error
+    @commands.command()
+    @commands.has_guild_permissions(manage_guild=True)
+    async def dailymessagechannel(self, context: commands.Context, channel: discord.TextChannel):
+        """Set which channel to send daily messages."""
+
+        write_json(context.guild.id, "daily_message_channel_id", value=channel.id)
+        await context.send(f"Daily message channel is set to {channel.mention}")
+
+    @announcementchannel.error
+    @dailymessagechannel.error
     async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
         if isinstance(error, commands.errors.MissingPermissions):
             await context.send("User needs Manage Server permission to use this command.")
@@ -100,3 +110,19 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             if channel_id is not None:
                 channel = await self.bot.fetch_channel(channel_id)
                 await channel.send(file=discord.File("oct5day.mov"))
+
+    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
+    async def daily_message(self):
+        """Generate a random quote from the list of daily messages and send it with a random Kagetsu Tōya template."""
+
+        for guild in self.bot.guilds:
+            channel_id = read_json(guild.id, "daily_message_channel_id")
+            if channel_id is not None:
+                channel = await self.bot.fetch_channel(channel_id)
+
+                # Randomly choose the text for the image
+                with open("dailymessages.json", "r", encoding="utf8") as file:
+                    headers = json.load(file)            
+                message = random.choice(list(headers.keys()))
+                item = random.choice(headers[message])
+                await ImageEditing.send_kagetsutoya_in_channel(channel, None, message+item)
