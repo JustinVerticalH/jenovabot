@@ -21,6 +21,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         self.umineko_video_1.start()
         self.umineko_video_2.start()
         self.umineko_video_3.start()
+        self.daily_message.start()
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
