@@ -1,0 +1,55 @@
+[
+    {
+        "name": "Ninja Troll",
+        "date": {
+            "hour": 17,
+            "minute": 0,
+            "second": 0,
+            "weekday": "Friday"
+        },
+        "filename": "ninja_troll.png"
+    },
+    {
+        "name": "First of the Month",
+        "date": {
+            "hour": 0,
+            "minute": 0,
+            "second": 0,
+            "day": 1
+        },
+        "filename": "first_of_the_month.mov"
+    },
+    {
+        "name": "October 4th (Day)",
+        "date": {
+            "hour": 0,
+            "minute": 0,
+            "second": 0,
+            "month": 10,
+            "day": 4
+        },
+        "filename": "oct4day.mov"
+    },
+    {
+        "name": "October 4th (End)",
+        "date": {
+            "hour": 0,
+            "minute": 0,
+            "second": 0,
+            "month": 10,
+            "day": 5
+        },
+        "filename": "oct4end.mov"
+    },
+    {
+        "name": "October 5th (Day)",
+        "date": {
+            "hour": 8,
+            "minute": 0,
+            "second": 0,
+            "month": 10,
+            "day": 5
+        },
+        "filename": "oct5day.mov"
+    }
+]

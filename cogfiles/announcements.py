@@ -1,10 +1,43 @@
 import datetime, json, random, zoneinfo
+from dataclasses import dataclass, field
 from ioutils import read_json, write_json
 from cogfiles.image_editing import ImageEditing
 
 import discord
 from discord.ext import commands, tasks
 
+@dataclass
+class AnnouncementConfig:
+    time: datetime.time
+    month: int | None
+    day: int | None
+    weekday: int | None
+    message: str | None
+    file: discord.File | None
+
+    def __init__(self, date: dict[str, int], message: str | None, filename: str | None):
+        self.time = datetime.time(hour=date["hour"], minute=date["minute"], second=date["second"], tzinfo=zoneinfo.ZoneInfo("US/Eastern"))
+        
+        self.month = date.get("month")
+        self.day = date.get("day")
+        
+        weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.weekday = {day: num for num, day in enumerate(weekdays)}.get(date.get("weekday"))
+
+        self.message = message
+        self.file = None if filename is None else discord.File(filename)
+    
+    def date_matches(self, date: datetime.datetime):
+        if self.month is not None and self.month != date.month:
+            return False
+            
+        if self.day is not None and self.day != date.day:
+            return False
+        
+        if self.weekday is not None and self.weekday != date.weekday():
+            return False
+        
+        return True
 
 class Announcements(commands.Cog, name="Periodic Announcements"):
     """Periodically send specific messages in certain channels at scheduled times."""
@@ -14,13 +47,21 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Start the periodic announcements processing loop."""
+        """Start the periodic announcements processing loops."""
+        # params = [
+        #     ({"hour": 17, "minute": 0, "second": 0, "weekday": 4}, None, discord.File("ninja_troll.png")),
+        #     ({"hour": 0, "minute": 0, "second": 0, "day": 1}, None, discord.File("first_of_the_month.mov")),
+        #     ({"hour": 0, "minute": 0, "second": 0, "month": 10, "day": 4}, None, discord.File("oct4day.mov")),
+        #     ({"hour": 0, "minute": 0, "second": 0, "month": 10, "day": 5}, None, discord.File("oct4end.mov")),
+        #     ({"hour": 8, "minute": 0, "second": 0, "month": 10, "day": 5}, None, discord.File("oct5day.mov")),
+        # ]
+        with open("announcements.json", "r", encoding="utf8") as file:
+            configs = map(lambda config: AnnouncementConfig(config["date"], config["message"], config["filename"]), json.load(file))
 
-        self.ninja_troll.start()
-        self.first_of_the_month.start()
-        self.umineko_video_1.start()
-        self.umineko_video_2.start()
-        self.umineko_video_3.start()
+        for config in configs:
+            if config.message is not None or config.file is not None:
+                self.create_announcement_loop(config).start()
+
         self.daily_message.start()
 
     @commands.command()
@@ -47,71 +88,19 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
-    @tasks.loop(time=datetime.time(hour=17, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 5:00 PM EST
-    async def ninja_troll(self):
-        """Send periodic announcement messages at their appropriate times."""
-        
-        if datetime.date.today().weekday() != 4: # Friday
-            return
-        
-        for guild in self.bot.guilds:
-            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
-            if channel_id is not None:
-                channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("ninja_troll.png"))
-
-    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
-    async def first_of_the_month(self):
-        """Send periodic announcement messages at their appropriate times."""
-        
-        if datetime.date.today().day != 1: # 1st day of the month
-            return
-        
-        for guild in self.bot.guilds:
-            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
-            if channel_id is not None:
-                channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("first_of_the_month.mov"))
-
-    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
-    async def umineko_video_1(self):
-        """Send periodic announcement messages at their appropriate times."""
-        
-        if datetime.date.today().month != 10 or datetime.date.today().day != 4: # October 4th
-            return
-        
-        for guild in self.bot.guilds:
-            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
-            if channel_id is not None:
-                channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("oct4day.mov"))
-
-    @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
-    async def umineko_video_2(self):
-        """Send periodic announcement messages at their appropriate times."""
-        
-        if datetime.date.today().month != 10 or datetime.date.today().day != 5: # October 5th
-            return
-        
-        for guild in self.bot.guilds:
-            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
-            if channel_id is not None:
-                channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("oct4end.mov"))
+    def create_announcement_loop(self, config: AnnouncementConfig):
+        @tasks.loop(time=config.time)
+        async def announcement_loop():
+            if not config.date_matches(datetime.datetime.today()):
+                return
+            
+            for guild in self.bot.guilds:
+                channel_id = read_json(guild.id, "periodic_announcement_channel_id")
+                if channel_id is not None:
+                    channel = await self.bot.fetch_channel(channel_id)
+                    await channel.send(config.message, file=config.file)
+        return announcement_loop
     
-    @tasks.loop(time=datetime.time(hour=8, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 8:00 AM EST
-    async def umineko_video_3(self):
-        """Send periodic announcement messages at their appropriate times."""
-        
-        if datetime.date.today().month != 10 or datetime.date.today().day != 5: # October 5th
-            return
-        
-        for guild in self.bot.guilds:
-            channel_id = read_json(guild.id, "periodic_announcement_channel_id")
-            if channel_id is not None:
-                channel = await self.bot.fetch_channel(channel_id)
-                await channel.send(file=discord.File("oct5day.mov"))
-
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def daily_message(self):
         """Generate a random quote from the list of daily messages and send it with a random Kagetsu Tōya template."""
