@@ -56,7 +56,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         #     ({"hour": 8, "minute": 0, "second": 0, "month": 10, "day": 5}, None, discord.File("oct5day.mov")),
         # ]
         with open("announcements.json", "r", encoding="utf8") as file:
-            configs = map(lambda config: AnnouncementConfig(config["date"], config["message"], config["filename"]), json.load(file))
+            configs = map(lambda config: AnnouncementConfig(config["date"], config.get("message"), config.get("filename")), json.load(file))
 
         for config in configs:
             if config.message is not None or config.file is not None:
