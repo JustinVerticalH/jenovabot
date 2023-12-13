@@ -45,16 +45,9 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def initialize(self):
         """Start the periodic announcements processing loops."""
-        # params = [
-        #     ({"hour": 17, "minute": 0, "second": 0, "weekday": 4}, None, discord.File("ninja_troll.png")),
-        #     ({"hour": 0, "minute": 0, "second": 0, "day": 1}, None, discord.File("first_of_the_month.mov")),
-        #     ({"hour": 0, "minute": 0, "second": 0, "month": 10, "day": 4}, None, discord.File("oct4day.mov")),
-        #     ({"hour": 0, "minute": 0, "second": 0, "month": 10, "day": 5}, None, discord.File("oct4end.mov")),
-        #     ({"hour": 8, "minute": 0, "second": 0, "month": 10, "day": 5}, None, discord.File("oct5day.mov")),
-        # ]
+
         with open("announcements.json", "r", encoding="utf8") as file:
             configs = map(lambda config: AnnouncementConfig(config["date"], config.get("message"), config.get("filename")), json.load(file))
 
@@ -63,6 +56,14 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                 self.create_announcement_loop(config).start()
 
         self.daily_message.start()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.initialize()
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: discord.Guild):
+        await self.initialize()
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)

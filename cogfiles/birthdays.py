@@ -14,7 +14,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
     async def initialize(self):
         """Initialize the list of birthdays."""
-        
+
         for guild in self.bot.guilds:
             guild_birthdays = read_json(guild.id, "birthdays")
             if guild_birthdays is None:
@@ -30,13 +30,8 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await self.initialize()
 
     @commands.Cog.listener()
-    async def on_guild_join(self):
-        await self.initialize()
-
-    @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
-        write_json(guild.id, "birthdays", value={})
-        self.bot.birthdays[guild.id] = {}
+        await self.initialize()
 
     @commands.group(invoke_without_command=True)
     async def birthday(self, context: commands.Context, *, date_str: str):

@@ -100,14 +100,9 @@ class Reminders(commands.Cog, name="Reminders"):
         await self.initialize()
 
     @commands.Cog.listener()
-    async def on_guild_join(self):
+    async def on_guild_join(self, guild: discord.Guild):
         await self.initialize()
 
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild: discord.Guild):
-        write_json(guild.id, "reminders", value={})
-        self.bot.reminders[guild.id] = {}
- 
     @commands.group(aliases=["remindme", "rm"], invoke_without_command=True)
     async def remind(self, context: commands.Context, time: str, *, reminder_str: str):
         """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)"""
