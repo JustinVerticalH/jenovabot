@@ -12,8 +12,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         self.yet_to_ping: set[discord.ScheduledEvent] = set()
         self.wait_until_announcement_tasks: dict[discord.ScheduledEvent, tasks.Loop] = {}
     
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def initialize(self):
         for guild in self.bot.guilds:
             for event in await guild.fetch_scheduled_events():
                 if event.status == discord.EventStatus.scheduled:
@@ -21,8 +20,17 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
                     self.yet_to_ping.add(event)
 
     @commands.Cog.listener()
+    async def on_ready(self):
+        await self.initialize()
+
+    @commands.Cog.listener()
+    async def on_guild_join(self):
+        await self.initialize()
+
+    @commands.Cog.listener()
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
         """Send a ping message when an event tied to a role is created."""
+
         await self.send_event_start_time_message(event)
 
     @commands.Cog.listener()
@@ -91,7 +99,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
-    async def alerts(self, context: commands.Context, channel: discord.TextChannel | discord.ForumChannel):
+    async def alertchannel(self, context: commands.Context, channel: discord.TextChannel | discord.ForumChannel):
         """Set which channel to send event alert ping messages."""
 
         write_json(context.guild.id, "scheduled_event_alert_channel_id", value=channel.id)

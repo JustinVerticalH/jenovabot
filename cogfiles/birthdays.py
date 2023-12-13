@@ -12,9 +12,9 @@ class Birthdays(commands.Cog, name="Birthdays"):
         self.bot = bot
         self.birthdays: dict[int, dict[discord.User, datetime.date]] = {}
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def initialize(self):
         """Initialize the list of birthdays."""
+        
         for guild in self.bot.guilds:
             guild_birthdays = read_json(guild.id, "birthdays")
             if guild_birthdays is None:
@@ -24,6 +24,14 @@ class Birthdays(commands.Cog, name="Birthdays"):
                 self.birthdays[guild.id] = {await self.bot.fetch_user(user_id): datetime.datetime.strptime(birthday, "%Y-%m-%d").date() for user_id, birthday in guild_birthdays.items()}
 
         self.send_birthday_message.start()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.initialize()
+
+    @commands.Cog.listener()
+    async def on_guild_join(self):
+        await self.initialize()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):

@@ -82,11 +82,10 @@ class Reminders(commands.Cog, name="Reminders"):
         self.bot = bot
         self.reminders: dict[int, set[Reminder]] = {}
         self._cached_reminders: dict[int, set[Reminder]] = {}
-    
-    @commands.Cog.listener()
-    async def on_ready(self):
-        """Initialize the reminders instance dictionary from JSON data and start the reminder processing loop."""
 
+    async def initialize(self):
+        """Initialize the reminders instance dictionary from JSON data and start the reminder processing loop."""
+        
         for guild in self.bot.guilds:
             if read_json(guild.id, "reminders") is None:
                 write_json(guild.id, "reminders", value={})
@@ -95,6 +94,14 @@ class Reminders(commands.Cog, name="Reminders"):
         
         self.send_reminders.start()
         self.sync_json.start()
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.initialize()
+
+    @commands.Cog.listener()
+    async def on_guild_join(self):
+        await self.initialize()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
