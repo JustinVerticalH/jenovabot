@@ -105,7 +105,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         write_json(context.guild.id, "scheduled_event_alert_channel_id", value=channel.id)
         await context.send(f"Event alert channel is set to {channel.mention}")
     
-    @alerts.error
+    @alertchannel.error
     async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
         if isinstance(error, commands.errors.MissingPermissions):
             await context.send("User needs Manage Server permission to use this command.")
