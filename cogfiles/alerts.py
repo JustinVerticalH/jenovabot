@@ -119,7 +119,11 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
 
     @staticmethod
     def get_role_from_event(event: discord.ScheduledEvent) -> discord.Role:
-        for role in event.guild.roles:
+        # For some reason, event.guild.roles iterates through the roles from the bottom of the list to the top.
+        # We want to look through the roles list starting from the top (i.e. starting from "Witch of Storycasting"),
+        # so we reverse the event.guild.roles iterator here to do so.
+        
+        for role in reversed(event.guild.roles):
             if EventAlerts.matches_role(role, event=event):                
                 return role
         return None
