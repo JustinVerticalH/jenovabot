@@ -20,6 +20,15 @@
         "filename": "first_of_the_month.mov"
     },
     {
+        "name": "Good Morning",
+        "date": {
+            "hour": 8,
+            "minute": 0,
+            "second": 0
+        },
+        "filename": "good_morning_rika.jpg"
+    },
+    {
         "name": "October 4th (Day)",
         "date": {
             "hour": 0,
