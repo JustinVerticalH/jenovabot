@@ -1,4 +1,4 @@
-import aiohttp, json, os, re
+import aiohttp, json, os, re, textwrap
 
 from bs4 import BeautifulSoup
 from dateutil import parser
@@ -157,13 +157,13 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 response_url = response_json["data"]["Media"]["siteUrl"]
                 await context.send(response_url)
     
-    @commands.command()
+    @commands.command(aliases=["vn"])
     async def vndb(self, context: commands.Context, *, vn_name: str):
         """Search VNDB for a visual novel matching the provided search."""
 
         vn_request_data = f"""{{
             "filters": ["search", "=", "{vn_name}"],
-            "fields": "id, title, image.url, image.sexual, image.violence, description"
+            "fields": "id, title, image.url, image.sexual, image.violence, length_minutes, description, developers.name"
         }}"""
 
         async with aiohttp.ClientSession(headers={'Content-Type': 'application/json'}) as session:
@@ -173,10 +173,14 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
             vn, _ = process.extractOne(vn_name, results, processor=lambda vn: vn if vn == vn_name else vn["title"])
 
         vn["description"] = re.sub(r"\[url=(.*)\](.*)\[\/url\]", r"[\2](\1)", vn["description"])
-        if len(vn["description"]) > 4096:
-            vn["description"] = vn["description"][:4093] + "..."
+        vn["description"] = re.sub(r"\[i\]|\[/i\]", r"*", vn["description"]) # Changes italics markers to match Discord's formatting
+        vn["description"] = re.sub(r"\[spoiler\]|\[\/spoiler\]", r"\|\|", vn["description"]) # Changes spoiler markers to match Discord's formatting
+        vn["description"] = textwrap.shorten(vn["description"], width=350, placeholder="...")
 
-        vn_data = RandomColorEmbed(title=vn["title"], url=f"https://vndb.org/{vn['id']}", description=vn["description"])
+        developers = ", ".join(developer["name"] for developer in vn["developers"])
+        length_hours = "Unknown" if vn["length_minutes"] is None else f"{float(vn['length_minutes'] / 60):.2f} hours"
+        description = f"**Developed by: {developers}**\n**Average completion time: {length_hours}**\n\n{vn['description']}"
+        vn_data = RandomColorEmbed(title=vn["title"], url=f"https://vndb.org/{vn['id']}", description=description)
         if vn["image"]["sexual"] < 2 and vn["image"]["violence"] < 2:
             vn_data.set_thumbnail(url=vn["image"]["url"])
         
@@ -189,21 +193,28 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         For each result, prints the name of the game, the sale percent and new price, and the store with that price."""
 
         async with aiohttp.ClientSession() as session:
-            content = await WebScrapers.isthereanydeal_search(session, search)
+            api = f"https://api.isthereanydeal.com/games/search/v1?key={ITAD_API_KEY}&title={search}"
+            async with session.get(api) as response:
+
+                content = await response.read()
+                content = json.loads(content)
+
+                if response.status != 200 or len(content) == 0:
+                    content = None
+
             if content is None:
                 return await context.send("Could not find a game with that title.")
-
-            url = content["data"]["urls"]["search"]
 
             description = ""
 
             valid_games = 0
-            for i in range(len(content["data"]["results"])):
-                game_plain = content["data"]["results"][i]["plain"]
-                game_title = content["data"]["results"][i]["title"]
+            for i in range(len(content)):
+                game_id = content[i]["id"]
+                game_title = content[i]["title"]
             
-                api = f"https://api.isthereanydeal.com/v01/game/prices/?key={ITAD_API_KEY}&plains={game_plain}"
-                async with session.post(api) as response:
+                request_data = f"""{json.dumps([game_id])}"""
+                api = f"https://api.isthereanydeal.com/games/prices/v2?key={ITAD_API_KEY}"
+                async with session.post(api, data=request_data) as response:
                     price_content = await response.read()
                     price_content = json.loads(price_content)
 
@@ -212,13 +223,13 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                     # To avoid displaying these entries, skip over them if an IndexError occurs.
                     # Once 5 valid entries have been found and added to the description, we are done.
                 try:
-                    price_cut = price_content["data"][game_plain]["list"][0]["price_cut"]
-                    price_new = round(price_content["data"][game_plain]["list"][0]["price_new"], 2)
-                    store_url = price_content["data"][game_plain]["list"][0]["url"]
-                    store_name = price_content["data"][game_plain]["list"][0]["shop"]["name"]
-                    game_url = price_content["data"][game_plain]["urls"]["game"]
+                    game_deals = price_content[0]["deals"][0]
+                    price_cut = game_deals["cut"]
+                    price_new = f"{float(game_deals['price']['amount']):.2f}"
+                    store_name = game_deals["shop"]["name"]
+                    game_url = game_deals["url"]
                     
-                    description += f"**[{game_title}]({game_url})**\n**${price_new}** ({price_cut}% Off)\n[{store_name}]({store_url})\n\n"
+                    description += f"**[{game_title}]({game_url})**\n**${price_new}** ({price_cut}% Off)\n{store_name}\n\n"
 
                     valid_games += 1
                     if valid_games >= 5:
@@ -227,25 +238,15 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 except IndexError:
                     continue
 
-        embed = RandomColorEmbed(title="Is There Any Deal?", url=url, description=description)
+        embed = RandomColorEmbed(title="Is There Any Deal?", description=description)
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1005720333053075486/1066597183173959761/YWJzOi8vZGlzdC9pY29ucy9pc3RoZXJlYW55ZGVhbF8xNjU2MDgucG5n.png")
         await context.send(embed=embed)
 
-    @staticmethod
-    async def isthereanydeal_search(session: aiohttp.ClientSession, search: str):
-        api = f"https://api.isthereanydeal.com/v02/search/search/?key={ITAD_API_KEY}&q={search}"
-        async with session.post(api) as response:
-
-            content = await response.read()
-            content = json.loads(content)
-
-            if response.status != 200 or len(content["data"]["results"]) == 0:
-                return None
-
-            return content
-
     @commands.command()
     async def ebay(self, context: commands.Context, *, search: str):
+        """Search eBay for listings matching the provided search.
+        This command retrives the first 5 results of a search on eBay."""
+        
         api = "https://svcs.ebay.com/services/search/FindingService/v1" \
         f"?OPERATION-NAME=findItemsByKeywords&SECURITY-APPNAME={EBAY_APP_NAME}" \
         f"&REST-PAYLOAD&RESPONSE-DATA-FORMAT=JSON&keywords={search}"
@@ -257,14 +258,16 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
                 url = content["findItemsByKeywordsResponse"][0]["itemSearchURL"][0]
                 embed = RandomColorEmbed(title="eBay", url=url)
-                embed.set_thumbnail(url="http://www.pngpix.com/wp-content/uploads/2016/07/PNGPIX-COM-eBay-Logo-PNG-Transparent.png")
+                embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/EBay_logo.png/800px-EBay_logo.png")
 
                 description = ""
+                # Iterate through the first 5 results, and extract information about each. 
                 for result in content["findItemsByKeywordsResponse"][0]["searchResult"][0]["item"][:5]:
                     title = result["title"][0]
                     url = result["viewItemURL"][0]
                     price = f"{float(result['sellingStatus'][0]['convertedCurrentPrice'][0]['__value__']):.2f}"
                     
+                    # Each listing is an auction and/or fixed price. Display the correct price.
                     listing_type = result["listingInfo"][0]["listingType"][0]
                     if listing_type == "Auction":
                         price_info = f"Current Bid: ${price}"
