@@ -1,13 +1,15 @@
 import datetime, json, random, zoneinfo
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from ioutils import read_json, write_json
 from cogfiles.image_editing import ImageEditing
 
 import discord
 from discord.ext import commands, tasks
 
+
 @dataclass
 class AnnouncementConfig:
+    """Contains parameters for a looping announcement, including the date/time to send the message and the contents of the message."""
     time: datetime.time
     month: int | None
     day: int | None
@@ -16,6 +18,7 @@ class AnnouncementConfig:
     file: discord.File | None
 
     def __init__(self, date: dict[str, int], message: str | None, filename: str | None):
+        """Initializes the announcement config, given the necessary arguments."""
         self.time = datetime.time(hour=date["hour"], minute=date["minute"], second=date["second"], tzinfo=zoneinfo.ZoneInfo("US/Eastern"))
         
         self.month = date.get("month")
@@ -27,7 +30,8 @@ class AnnouncementConfig:
         self.message = message
         self.file = None if filename is None else discord.File(filename)
     
-    def date_matches(self, date: datetime.datetime):
+    def date_matches(self, date: datetime.date):
+        """Determines if a given date matches this date."""
         if self.month is not None and self.month != date.month:
             return False
             
@@ -47,7 +51,6 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     async def initialize(self):
         """Start the periodic announcements processing loops."""
-
         with open("announcements.json", "r", encoding="utf8") as file:
             configs = map(lambda config: AnnouncementConfig(config["date"], config.get("message"), config.get("filename")), json.load(file))
 
@@ -59,17 +62,18 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        """Initializes the class on startup."""
         await self.initialize()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
+        """Initializes the class on server join."""
         await self.initialize()
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
     async def announcementchannel(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
-        
         write_json(context.guild.id, "periodic_announcement_channel_id", value=channel.id)
         await context.send(f"Periodic announcement channel is set to {channel.mention}")
 
@@ -77,22 +81,24 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     @commands.has_guild_permissions(manage_guild=True)
     async def dailymessagechannel(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send daily messages."""
-
         write_json(context.guild.id, "daily_message_channel_id", value=channel.id)
         await context.send(f"Daily message channel is set to {channel.mention}")
 
     @announcementchannel.error
     @dailymessagechannel.error
     async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
+        """Handles errors for the given command (insufficient permissions, etc)."""
         if isinstance(error, commands.errors.MissingPermissions):
             await context.send("User needs Manage Server permission to use this command.")
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
     def create_announcement_loop(self, config: AnnouncementConfig):
+        """Creates a task loop that runs and sends a message at the times given by the config."""
         @tasks.loop(time=config.time)
         async def announcement_loop():
-            if not config.date_matches(datetime.datetime.today()):
+            """Loops at the given times, sending a message with the config's file each time."""
+            if not config.date_matches(datetime.datetime.today().date()):
                 return
             
             for guild in self.bot.guilds:
@@ -105,7 +111,6 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def daily_message(self):
         """Generate a random quote from the list of daily messages and send it with a random Kagetsu Tōya template."""
-
         for guild in self.bot.guilds:
             channel_id = read_json(guild.id, "daily_message_channel_id")
             if channel_id is not None:

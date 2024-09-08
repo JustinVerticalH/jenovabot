@@ -12,7 +12,6 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Detect key phrases in messages."""
-
         # The bot shouldn't respond to its own copypastas
         if message.author == self.bot.user:
             return

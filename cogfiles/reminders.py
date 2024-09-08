@@ -1,4 +1,4 @@
-import datetime, re
+import datetime, json, re
 from dataclasses import dataclass, field
 from ioutils import RandomColorEmbed, read_json, write_json
 
@@ -10,7 +10,6 @@ from discord.utils import format_dt
 @dataclass(frozen=True, order=True)
 class Reminder:
     """Data associated with a scheduled reminder."""
-
     command_message: discord.Message = field(compare=False)
     reminder_datetime: datetime.datetime
     reminder_str: str = field(compare=False)
@@ -27,7 +26,6 @@ class Reminder:
 
     def to_json(self) -> dict[str, int | float | str]:
         """Convert the current reminder object to a JSON string."""
-
         return {
             "channel_id": self.command_message.channel.id,
             "command_message_id": self.command_message.id,
@@ -38,7 +36,6 @@ class Reminder:
     @staticmethod
     async def from_json(bot: commands.Bot, json_obj: dict[str, int | float | str]):
         """Convert a JSON dictionary to a Reminder object."""
-
         channel = bot.get_channel(json_obj["channel_id"])
         
         if channel is not None:
@@ -49,6 +46,7 @@ class Reminder:
             return Reminder(command_message, reminder_datetime, reminder_str)    
 
 class ReminderCancelSelect(discord.ui.Select):
+
     def __init__(self, context: commands.Context, reminders: set[Reminder]):
         self.bot = context.bot
         self.reminders = reminders
@@ -57,6 +55,7 @@ class ReminderCancelSelect(discord.ui.Select):
         super().__init__(placeholder="Select reminders to cancel...", max_values=len(reminders), options=options)
     
     async def callback(self, interaction: discord.Interaction):
+        """The callback associated with this UI item."""
         cancelled_reminders = {reminder for reminder in self.reminders if repr(reminder) in self.values}
         self.bot.get_cog("Reminders").reminders[interaction.guild_id] -= cancelled_reminders
 
@@ -73,6 +72,7 @@ class ReminderCancelView(discord.ui.View):
         self.add_item(ReminderCancelSelect(context, reminders))
     
     async def interaction_check(self, interaction: discord.Interaction):
+        """Checks whether the callback should be processed."""
         return interaction.user == self.member
 
 class Reminders(commands.Cog, name="Reminders"):
@@ -85,11 +85,13 @@ class Reminders(commands.Cog, name="Reminders"):
 
     async def initialize(self):
         """Initialize the reminders instance dictionary from JSON data and start the reminder processing loop."""
-        
         for guild in self.bot.guilds:
             if read_json(guild.id, "reminders") is None:
                 write_json(guild.id, "reminders", value={})
-            self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_json(guild.id, "reminders")}
+            try:
+                self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_json(guild.id, "reminders")}
+            except json.JSONDecodeError as e:
+                print()
             self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
         
         self.send_reminders.start()
@@ -97,16 +99,17 @@ class Reminders(commands.Cog, name="Reminders"):
     
     @commands.Cog.listener()
     async def on_ready(self):
+        """Initializes the class on startup."""
         await self.initialize()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
+        """Initializes the class on server join."""
         await self.initialize()
 
     @commands.group(aliases=["remindme", "rm"], invoke_without_command=True)
     async def remind(self, context: commands.Context, time: str, *, reminder_str: str):
-        """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)"""
-        
+        """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)."""
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
         if not is_valid:
@@ -135,7 +138,6 @@ class Reminders(commands.Cog, name="Reminders"):
 
     async def create_reminder(self, message: discord.Message, time: datetime.datetime, reminder_str: str):
         "Creates a new reminder and adds it to the list of reminders."
-
         reminder = Reminder(message, time, reminder_str)
         if message.guild.id not in self.reminders:
             self.reminders[message.guild.id] = set()
@@ -146,7 +148,6 @@ class Reminders(commands.Cog, name="Reminders"):
     @staticmethod
     def get_datetime_parameters(time: str):
         """Convert a time string into parameters for a datetime object."""
-
         is_valid = True
 
         timer_parameters = re.fullmatch("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
@@ -158,8 +159,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
     @commands.command()
     async def reminders(self, context: commands.Context):
-        """View scheduled reminders of every server member."""
-        
+        """View scheduled reminders of every server member.""" 
         if len(self.reminders[context.guild.id]) == 0:
             return await context.send("No reminders currently set.")
 
@@ -171,12 +171,12 @@ class Reminders(commands.Cog, name="Reminders"):
 
     @remind.command(aliases=["list"])
     async def viewall(self, context: commands.Context):
+        """Alias for the reminders command."""
         await self.reminders(context)
 
     @remind.command()
     async def cancel(self, context: commands.Context):
         """Cancel scheduled reminders."""
-        
         is_viewable = lambda reminder: context.author.guild_permissions.manage_guild or reminder.command_message.author == context.author
         filtered_reminders = {reminder for reminder in self.reminders[context.guild.id] if is_viewable(reminder)}
         
@@ -188,7 +188,6 @@ class Reminders(commands.Cog, name="Reminders"):
     @tasks.loop(seconds=0.2)
     async def send_reminders(self):
         """Send any reminders past their scheduled date."""
-
         for guild in self.bot.guilds:
             reminders = self.reminders[guild.id].copy()
             for reminder in reminders:
@@ -209,7 +208,6 @@ class Reminders(commands.Cog, name="Reminders"):
     @tasks.loop(seconds=0.3)
     async def sync_json(self):
         """Sync with the JSON file if any changes are detected."""
-
         for guild in self.bot.guilds:
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
                 write_json(guild.id, "reminders", value=[reminder.to_json() for reminder in self.reminders[guild.id]])

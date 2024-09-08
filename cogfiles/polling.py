@@ -1,4 +1,6 @@
+import random
 from discord.ext import commands
+
 
 class Polling(commands.Cog, name="Polling"):
     """Post a question with options to vote on."""
@@ -9,15 +11,20 @@ class Polling(commands.Cog, name="Polling"):
     @commands.command()
     async def yesorno(self, context: commands.Context):
         """Ask a yes or no question."""
-        
         poll_message = await context.send("Yes or No?")
         await poll_message.add_reaction("✅")
         await poll_message.add_reaction("❌")
     
+    @commands.command(aliases=["8ball"])
+    async def eightball(self, context: commands.Context, *, question: str):
+        """Responds to the user's question with a random positive or negative answer."""
+        positive_choices = ["Yes", "Hell yeah"]
+        negative_choices = ["No", "Hell nah"]
+        await context.send(random.choice([random.choice(positive_choices), random.choice(negative_choices)]))
+
     @commands.command()
     async def youonlyhaveoneshot(self, context: commands.Context):
-        """If you return the sun, Niko may never return home; if you destroy the sun, this world will cease to be."""
-        
+        """If you return the sun, Niko may never return home; if you destroy the sun, this world will cease to be."""   
         lightbulb = "<:lightbulb:1022745556675731528>"
         nikopensive = "<:nikopensive:1022745573759127583>"
         

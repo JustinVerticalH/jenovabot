@@ -15,21 +15,18 @@ class StreamPause(commands.Cog, name="Stream Pause"):
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
         """Keep track of reactions added to a streampause message, if there is one."""
-
         if self.streampause_data is not None:
             await self.attempt_to_finish_streampause(reaction, user, user.voice.channel if user.voice else None)
 
     @commands.Cog.listener()
     async def on_reaction_remove(self, reaction: discord.Reaction, user: discord.Member):
         """Keep track of reactions added to a streampause message, if there is one."""
-
         if self.streampause_data is not None:
             await self.attempt_to_finish_streampause(reaction, user, user.voice.channel if user.voice else None)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        """Keep track of members entering or leaving a voice channel during a streampause, if there is one."""
-        
+        """Keep track of members entering or leaving a voice channel during a streampause, if there is one."""       
         if self.streampause_data is not None:
             voice_channel = before.channel if after.channel is None else after.channel if before.channel is None else None
 
@@ -73,7 +70,6 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
     async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
         """Attempt to end a streampause upon a change to either reactions or voice channel members."""
-        
         if user.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
             return
 
@@ -90,27 +86,31 @@ class StreamPause(commands.Cog, name="Stream Pause"):
             self.streampause_data = None
 
     async def update_message(self, message: discord.Message, voice_channel: Optional[discord.VoiceChannel]):
-        if voice_channel is not None:
-            members = voice_channel.members
-
-            reacted_list = []
-            if message.reactions:
-                reacted_list = [user async for user in message.reactions[0].users() if not user.bot]
-
-            reacted_members = "**Reacted:**"
-            not_reacted_members = "**Not Reacted:**"
-
-            for member in members:
-                if member in reacted_list:
-                    reacted_members += f"\n{member.mention}"
-                else:
-                    not_reacted_members += f"\n{member.mention}"
+        """Check the reacted status of each member in the voice channel and update the streampause message to reflect the status."""
+        if voice_channel is None:
+            return
         
-            embed = RandomColorEmbed(title=message.embeds[0].title, colour=message.embeds[0].colour, description=f"{reacted_members}\n\n{not_reacted_members}")
-            await message.edit(embed=embed)
+        members = voice_channel.members
+
+        reacted_list = []
+        if message.reactions:
+            reacted_list = [user async for user in message.reactions[0].users() if not user.bot]
+
+        reacted_members = "**Reacted:**"
+        not_reacted_members = "**Not Reacted:**"
+
+        for member in members:
+            if member in reacted_list:
+                reacted_members += f"\n{member.mention}"
+            else:
+                not_reacted_members += f"\n{member.mention}"
+    
+        embed = RandomColorEmbed(title=message.embeds[0].title, colour=message.embeds[0].colour, description=f"{reacted_members}\n\n{not_reacted_members}")
+        await message.edit(embed=embed)
     
     @streampause.command()
     async def cancel(self, context: commands.Context):
+        """Cancels the current streampause."""
         if context.author.voice is None:
             await context.send("This command is only usable inside a voice channel.")
             return

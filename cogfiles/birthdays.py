@@ -14,7 +14,6 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
     async def initialize(self):
         """Initialize the list of birthdays."""
-
         for guild in self.bot.guilds:
             guild_birthdays = read_json(guild.id, "birthdays")
             if guild_birthdays is None:
@@ -27,10 +26,12 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        """Initializes the class on startup."""
         await self.initialize()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
+        """Initializes the class on server join."""
         await self.initialize()
 
     @commands.group(invoke_without_command=True)
@@ -38,8 +39,8 @@ class Birthdays(commands.Cog, name="Birthdays"):
         """Registers a user's birthday, given a month, day, and optional year."""
         date = parse(date_str).date()
         now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("US/Eastern"))
-        if (date.year == now.year):
-            date = datetime.date(year=datetime.MINYEAR, month=date.month, day=date.day)
+        if (date.year == now.year): # parse defaults to current year if no year is found. This means the user did not provide a year
+            date = datetime.date(year=datetime.MINYEAR, month=date.month, day=date.day) # Setting the year to MINYEAR represents no year provided
         
         if self.birthdays[context.guild.id] is None:
             self.birthdays[context.guild.id] = {}
@@ -56,19 +57,19 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
     @channel.error
     async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
+        """Handles errors for the given command (insufficient permissions, etc)."""
         if isinstance(error, commands.errors.MissingPermissions):
             await context.send("User needs Manage Server permission to use this command.")
         elif isinstance(error, commands.errors.ChannelNotFound):
             await context.send("Channel not found. Try again.")
 
-    @commands.command()
-    async def nextbirthdays(self, context: commands.Context):
-
+    @commands.command(aliases=["nextbirthdays"])
+    async def birthdays(self, context: commands.Context):
+        """Lists the next 10 birthdays in this server."""
         # Sort the birthday dates by month and day only, not year
         # Split the dates into two groups: dates that have already happened this year, and dates that haven't
         # Add the dates that have already happened after the dates that haven't
         # This gives a list of upcoming birthdays in sorted order, including some dates from next year after this year
-
         now = datetime.datetime.now().date()
         next_birthdays = {user: birthday.replace(year=now.year) for user, birthday in self.birthdays[context.guild.id].items()}
         sorted_birthdays = {user: birthday for user, birthday in sorted(next_birthdays.items(), key=lambda item: item[1])}
@@ -105,7 +106,8 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
 
 def ordinal(n: int) -> str:
-    if n % 100 == 11 or n % 100 == 12 or n % 100 == 13:
+    """Converts a number to a string representation of the number in ordinal form (1st, 2nd, 3rd, etc)."""
+    if n % 100 in [11, 12, 13]:
         return f"{n}th"
     if n % 10 == 1:
         return f"{n}st"
