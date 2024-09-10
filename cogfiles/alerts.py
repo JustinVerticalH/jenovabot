@@ -4,6 +4,9 @@ from discord.ext import commands, tasks
 from discord.utils import format_dt
 
 
+MINUTES_BEFORE_EVENT_START_TIME = 30
+
+
 class EventAlerts(commands.Cog, name="Event Alerts"):
     """Send a timestamped ping message whenever an event is created for a particular role."""
     
@@ -67,7 +70,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         if event in self.wait_until_announcement_tasks:
             self.cancel_wait_until_announcement_task(event)
 
-        @tasks.loop(time=(event.start_time - datetime.timedelta(minutes=30)).timetz())
+        @tasks.loop(time=(event.start_time - datetime.timedelta(minutes=MINUTES_BEFORE_EVENT_START_TIME)).timetz())
         async def wait_until_announcement():
             """Loops until the event creator joins a voice channel, then sends a starting message."""  
             if datetime.datetime.now(event.start_time.tzinfo).date() == event.start_time.date():
@@ -97,7 +100,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         role = EventAlerts.get_role_from_event(event)
         time_until_event_start = event.start_time - datetime.datetime.now(event.start_time.tzinfo)
         
-        if time_until_event_start <= datetime.timedelta(minutes=30):
+        if time_until_event_start <= datetime.timedelta(minutes=MINUTES_BEFORE_EVENT_START_TIME):
             channel = await event.guild.fetch_channel(read_json(event.guild.id, "scheduled_event_alert_channel_id"))
             # If the server has its event alerts channel set to a forum, then the forum should have a thread with a name matching the role
             if isinstance(channel, discord.ForumChannel):
