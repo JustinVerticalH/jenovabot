@@ -15,7 +15,7 @@ class AnnouncementConfig:
     day: int | None
     weekday: int | None
     message: str | None
-    file: discord.File | None
+    filename: str | None
 
     def __init__(self, date: dict[str, int], message: str | None, filename: str | None):
         """Initializes the announcement config, given the necessary arguments."""
@@ -28,7 +28,7 @@ class AnnouncementConfig:
         self.weekday = {day: num for num, day in enumerate(weekdays)}.get(date.get("weekday"))
 
         self.message = message
-        self.file = None if filename is None else discord.File(filename)
+        self.filename = filename
     
     def date_matches(self, date: datetime.date):
         """Determines if a given date matches this date."""
@@ -55,7 +55,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             configs = map(lambda config: AnnouncementConfig(config["date"], config.get("message"), config.get("filename")), json.load(file))
 
         for config in configs:
-            if config.message is not None or config.file is not None:
+            if config.message is not None or config.filename is not None:
                 self.create_announcement_loop(config).start()
 
         self.daily_message.start()
@@ -105,7 +105,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                 channel_id = read_json(guild.id, "periodic_announcement_channel_id")
                 if channel_id is not None:
                     channel = await self.bot.fetch_channel(channel_id)
-                    await channel.send(config.message, file=config.file)
+                    await channel.send(config.message, file=discord.File(config.filename))
         return announcement_loop
     
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
