@@ -213,10 +213,11 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
             game_title = content[i]["title"]
             
             request_data = f"""{json.dumps([game_id])}"""
-            api = f"https://api.isthereanydeal.com/games/prices/v2?key={ITAD_API_KEY}"
-            async with session.post(api, data=request_data) as response:
-                price_content = await response.read()
-                price_content = json.loads(price_content)
+            api = f"https://api.isthereanydeal.com/games/prices/v3?key={ITAD_API_KEY}"
+            async with aiohttp.ClientSession() as session:
+                async with session.post(api, data=request_data) as response:
+                    price_content = await response.read()
+                    price_content = json.loads(price_content)
 
             # Some entries in the list of results are not being sold on any stores.
             # Trying to find the price of these games results in an IndexError.
