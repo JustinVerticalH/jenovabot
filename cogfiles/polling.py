@@ -18,9 +18,10 @@ class Polling(commands.Cog, name="Polling"):
     @commands.command(aliases=["8ball"])
     async def eightball(self, context: commands.Context, *, question: str):
         """Responds to the user's question with a random positive or negative answer."""
-        positive_choices = ["Yes", "Hell yeah"]
-        negative_choices = ["No", "Hell nah"]
-        await context.send(random.choice([random.choice(positive_choices), random.choice(negative_choices)]))
+        positive_choices = ["Yes", "Yep", "Absolutely", "Definitely"]
+        negative_choices = ["No", "Nope", "Absolutely not", "Definitely not"]
+        response = random.choice([random.choice(positive_choices), random.choice(negative_choices)])
+        await context.send(f"> {question} \n {response}")
 
     @commands.command()
     async def youonlyhaveoneshot(self, context: commands.Context):
