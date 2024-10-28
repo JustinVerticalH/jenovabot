@@ -21,7 +21,7 @@ class Polling(commands.Cog, name="Polling"):
         positive_choices = ["Yes", "Yep", "Absolutely", "Definitely"]
         negative_choices = ["No", "Nope", "Absolutely not", "Definitely not"]
         response = random.choice([random.choice(positive_choices), random.choice(negative_choices)])
-        await context.send(f"> {question} \n {response}")
+        await context.send(f"> {question} \n{response}")
 
     @commands.command()
     async def youonlyhaveoneshot(self, context: commands.Context):
