@@ -1,4 +1,4 @@
-import os
+import os, types
 
 import discord
 import wavelink
@@ -8,29 +8,28 @@ from discord.ext import commands
 
 from ioutils import RandomColorEmbed
 
-
+# Lavalink server version must be at or above version 4.0.5
+# We can get Lavalink servers from https://lavalink.darrennathanael.com/NoSSL/lavalink-without-ssl/
 LAVALINK_HOST = f"http://{os.getenv('LAVALINK_HOST')}:{os.getenv('LAVALINK_PORT')}"
 LAVALINK_PASS = os.getenv("LAVALINK_PASS")
 
+async def setup_hook(self):
+    print(f"Lavalink Host: {LAVALINK_HOST}")
+    
+    nodes = [wavelink.Node(uri=LAVALINK_HOST, client=self, password=LAVALINK_PASS)]
+    # cache_capacity is EXPERIMENTAL. Turn it off by passing None
+    print(await wavelink.Pool.connect(nodes=nodes, client=self, cache_capacity=None))
 
-print(LAVALINK_HOST)
+commands.Bot.setup_hook = setup_hook
+
 
 class Music(commands.Cog, name="Music"):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.node: wavelink.Node
-        
-        self.skipping_manually = False
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.node = wavelink.Node(uri=LAVALINK_HOST, client=self.bot, password=LAVALINK_PASS)
-        nodes = [self.node]
-        
-        # cache_capacity is EXPERIMENTAL. Turn it off by passing None
-        print(await wavelink.Pool.connect(nodes=nodes, client=self.bot, cache_capacity=None))
-        print("Done!")
+        self.skipping_manually = False
     
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
