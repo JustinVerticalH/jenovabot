@@ -108,10 +108,10 @@ class Music(commands.Cog, name="Music"):
             # tracks is a playlist...            
 
             tracks.extras = channel_info
-            added = await player.queue.put_wait(tracks)
+            await player.queue.put_wait(tracks)
 
             embed.title = "Playlist Queued"
-            embed.description = f"[{tracks.name}]({query}) - {added} tracks"
+            embed.description = await self.format_playlist(tracks, query)
 
             video_thumbnail = f"https://img.youtube.com/vi/{tracks.tracks[0].identifier}/hqdefault.jpg"
             embed.set_thumbnail(url=video_thumbnail)
@@ -318,9 +318,9 @@ class Music(commands.Cog, name="Music"):
         embed = RandomColorEmbed(title=f"Looping {'On' if player.queue.mode == wavelink.QueueMode.loop else 'Off'}")
         await context.send(embed=embed)
 
-    async def format_track(self, track: wavelink.Playable | wavelink.Playlist):
-        if isinstance(track, wavelink.Playlist):
-            track_to_format = track[0]
-        else:
-            track_to_format = track
-        return f"**[{track_to_format.title}]({track_to_format.uri})**\nRequested by {(await self.bot.fetch_user(track_to_format.extras.requester_id)).mention}"
+    async def format_track(self, track: wavelink.Playable):
+        return f"**[{track.title}]({track.uri})**\nRequested by {(await self.bot.fetch_user(track.extras.requester_id)).mention}"
+    
+    async def format_playlist(self, playlist: wavelink.Playlist, playlist_url: str):
+        return f"**[{playlist.name}]({playlist_url})** - {len(playlist.tracks)} tracks\nRequested by {(await self.bot.fetch_user(playlist[0].extras.requester_id)).mention}"
+        # playlist.url defaults to None, so we have to pass in the playlist_url from play()
