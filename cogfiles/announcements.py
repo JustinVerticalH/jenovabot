@@ -7,6 +7,9 @@ import discord
 from discord.ext import commands, tasks
 
 
+ANNOUNCEMENT_FILES_FOLDER = "announcements"
+
+
 @dataclass
 class AnnouncementConfig:
     """Contains parameters for a looping announcement, including the date/time to send the message and the contents of the message."""
@@ -105,7 +108,8 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                 channel_id = read_json(guild.id, "periodic_announcement_channel_id")
                 if channel_id is not None:
                     channel = await self.bot.fetch_channel(channel_id)
-                    await channel.send(config.message, file=discord.File(config.filename))
+                    file_path = f"{ANNOUNCEMENT_FILES_FOLDER}/{config.filename}"
+                    await channel.send(config.message, file=discord.File(file_path))
         return announcement_loop
     
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
