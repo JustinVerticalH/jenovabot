@@ -58,7 +58,8 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def initialize(self):
+    @commands.Cog.listener()
+    async def on_ready(self):
         """Start the periodic announcements processing loops."""
         with open("announcements.json", "r", encoding="utf8") as file:
             configs = map(lambda config: AnnouncementConfig(config["date"], config.get("message"), config.get("filename")), json.load(file))
@@ -67,17 +68,10 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
             if config.message is not None or config.filename is not None:
                 self.create_announcement_loop(config).start()
 
-        self.daily_message.start()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        """Initializes the class on startup."""
-        await self.initialize()
-
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """Initializes the class on server join."""
-        await self.initialize()
+        await self.on_ready()
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)

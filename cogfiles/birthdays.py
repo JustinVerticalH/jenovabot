@@ -12,7 +12,8 @@ class Birthdays(commands.Cog, name="Birthdays"):
         self.bot = bot
         self.birthdays: dict[int, dict[discord.User, datetime.date]] = {}
 
-    async def initialize(self):
+    @commands.Cog.listener()
+    async def on_ready(self):
         """Initialize the list of birthdays."""
         for guild in self.bot.guilds:
             guild_birthdays = read_json(guild.id, "birthdays")
@@ -25,14 +26,9 @@ class Birthdays(commands.Cog, name="Birthdays"):
         self.send_birthday_message.start()
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        """Initializes the class on startup."""
-        await self.initialize()
-
-    @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """Initializes the class on server join."""
-        await self.initialize()
+        await self.on_ready()
 
     @commands.group(invoke_without_command=True)
     async def birthday(self, context: commands.Context, *, date_str: str):

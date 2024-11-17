@@ -15,7 +15,8 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         self.yet_to_ping: set[discord.ScheduledEvent] = set() # Events that have not yet been pinged, to avoid double pings
         self.wait_until_announcement_tasks: dict[discord.ScheduledEvent, tasks.Loop] = {}
     
-    async def initialize(self):
+    @commands.Cog.listener()
+    async def on_ready(self):
         """Initializes the list of events in memory and creates task loops for each announcement not already pinged."""
         for guild in self.bot.guilds:
             for event in await guild.fetch_scheduled_events():
@@ -24,14 +25,9 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
                     self.yet_to_ping.add(event)
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        """Initializes the class on startup."""
-        await self.initialize()
-
-    @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """Initializes the class on server join."""
-        await self.initialize()
+        await self.on_ready()
 
     @commands.Cog.listener()
     async def on_scheduled_event_create(self, event: discord.ScheduledEvent):
