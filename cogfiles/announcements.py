@@ -1,4 +1,4 @@
-import datetime, json, random, zoneinfo
+import datetime, holidays, json, random, zoneinfo
 from dataclasses import dataclass
 from ioutils import read_json, write_json
 from cogfiles.image_editing import ImageEditing
@@ -17,18 +17,21 @@ class AnnouncementConfig:
     month: int | None
     day: int | None
     weekday: int | None
+    holiday: str | None
     message: str | None
     filename: str | None
 
     def __init__(self, date: dict[str, int], message: str | None, filename: str | None):
         """Initializes the announcement config, given the necessary arguments."""
         self.time = datetime.time(hour=date["hour"], minute=date["minute"], second=date["second"], tzinfo=zoneinfo.ZoneInfo("US/Eastern"))
-        
+
         self.month = date.get("month")
         self.day = date.get("day")
         
         weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         self.weekday = {day: num for num, day in enumerate(weekdays)}.get(date.get("weekday"))
+
+        self.holiday = date.get("holiday")
 
         self.message = message
         self.filename = filename
@@ -42,6 +45,9 @@ class AnnouncementConfig:
             return False
         
         if self.weekday is not None and self.weekday != date.weekday():
+            return False
+        
+        if self.holiday is not None and self.holiday != holidays.country_holidays("US").get(date):
             return False
         
         return True
