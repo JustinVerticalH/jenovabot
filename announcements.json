@@ -60,5 +60,15 @@
             "day": 5
         },
         "filename": "oct5day.mov"
+    },
+    {
+        "name": "My Bird",
+        "date": {
+            "hour": 0,
+            "minute": 0,
+            "second": 0,
+            "holiday": "Thanksgiving"
+        },
+        "filename": "my_bird.gif"
     }
 ]
