@@ -1,4 +1,4 @@
-import aiohttp, json, os, re, textwrap
+import aiohttp, discord, json, os, re, textwrap
 
 from bs4 import BeautifulSoup
 from dateutil import parser
@@ -6,6 +6,7 @@ from ioutils import RandomColorEmbed
 from howlongtobeatpy import HowLongToBeat
 from thefuzz import process
 
+from discord import app_commands
 from discord.ext import commands
 from discord.utils import format_dt
 
@@ -20,6 +21,11 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        synced = await self.bot.tree.sync()
+        print(f"Synced {len(synced)} command(s) in {self.qualified_name}.")
 
     @commands.group(aliases=["hltb"], invoke_without_command=True)
     async def howlongtobeat(self, context: commands.Context, *, game_name: str):
@@ -158,9 +164,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         response_json = json.loads(response_text)
         response_url = response_json["data"]["Media"]["siteUrl"]
         await context.send(response_url)
-    
-    @commands.command(aliases=["vn"])
-    async def vndb(self, context: commands.Context, *, vn_name: str):
+
+    @app_commands.command()
+    async def vndb(self, interaction: discord.Interaction, vn_name: str):
         """Search VNDB for a visual novel matching the provided search."""
         vn_request_data = f"""{{
             "filters": ["search", "=", "{vn_name}"],
@@ -185,9 +191,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         if vn["image"]["sexual"] < 2 and vn["image"]["violence"] < 2:
             vn_data.set_thumbnail(url=vn["image"]["url"])
         
-        await context.send(embed=vn_data)
+        await interaction.response.send_message(embed=vn_data)
 
-    @commands.command(aliases=["itad", "sale"])
+    @app_commands.command()
     async def isthereanydeal(self, context: commands.Context, *, search: str):
         """Search IsThereAnyDeal for a game matching the provided search.
         This command retrives the first 5 results of a search on ITAD. 
@@ -240,11 +246,11 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 continue
 
         embed = RandomColorEmbed(title="Is There Any Deal?", description=description)
-        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1005720333053075486/1066597183173959761/YWJzOi8vZGlzdC9pY29ucy9pc3RoZXJlYW55ZGVhbF8xNjU2MDgucG5n.png")
+        embed.set_thumbnail(url="https://i.imgur.com/kd2JUwX.png")
         await context.send(embed=embed)
 
-    @commands.command()
-    async def ebay(self, context: commands.Context, *, search: str):
+    @app_commands.command()
+    async def ebay(self, interaction: discord.Interaction, search: str):
         """Search eBay for listings matching the provided search.
         This command retrives the first 5 results of a search on eBay."""
         async with aiohttp.ClientSession() as session:
@@ -256,9 +262,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 content = json.loads(content)
 
         search_result = content["findItemsByKeywordsResponse"][0]["searchResult"][0]
-        if (search_result["@count"] == "0"):
-            return await context.send("Could not find any search results.")
-                
+        if search_result["@count"] == "0":
+            return await interaction.response.send_message("Could not find any search results.")
+
         url = content["findItemsByKeywordsResponse"][0]["itemSearchURL"][0]
         embed = RandomColorEmbed(title="eBay", url=url)
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/EBay_logo.png/800px-EBay_logo.png")
@@ -289,4 +295,4 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         embed.description = description
 
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)

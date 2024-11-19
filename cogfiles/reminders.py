@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from ioutils import RandomColorEmbed, read_json, write_json
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 from discord.utils import format_dt
 
@@ -18,16 +19,15 @@ class Reminder:
         return f"{self.command_message.author.mention} - {self.command_message.jump_url} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
 
     def __repr__(self):
+        MAX_LENGTH = 100
         out = f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
-        if len(out) > 100:
-            out = out[:97] + "..."
+        if len(out) > MAX_LENGTH:
+            out = out[:MAX_LENGTH-3] + "..."
         return out
-
 
     def to_json(self) -> dict[str, int | float | str]:
         """Convert the current reminder object to a JSON string."""
         return {
-            "channel_id": self.command_message.channel.id,
             "command_message_id": self.command_message.id,
             "reminder_timestamp": self.reminder_datetime.timestamp(),
             "reminder_str": self.reminder_str
@@ -43,12 +43,12 @@ class Reminder:
             reminder_datetime = datetime.datetime.fromtimestamp(json_obj["reminder_timestamp"])
             reminder_str = json_obj["reminder_str"]
 
-            return Reminder(command_message, reminder_datetime, reminder_str)    
+            return Reminder(command_message, reminder_datetime, reminder_str)
 
 class ReminderCancelSelect(discord.ui.Select):
 
-    def __init__(self, context: commands.Context, reminders: set[Reminder]):
-        self.bot = context.bot
+    def __init__(self, interaction: discord.Interaction, reminders: set[Reminder]):
+        self.bot = interaction.client
         self.reminders = reminders
 
         options = [discord.SelectOption(label=repr(reminder)) for reminder in sorted(reminders, key=lambda r: r.reminder_datetime.timestamp())]
@@ -66,10 +66,10 @@ class ReminderCancelSelect(discord.ui.Select):
         await interaction.response.send_message(embed=cancelled_reminder_list, ephemeral=True)
 
 class ReminderCancelView(discord.ui.View):
-    def __init__(self, context: commands.Context, reminders: set[Reminder]):
+    def __init__(self, interaction: discord.Interaction, reminders: set[Reminder]):
         super().__init__()
-        self.member = context.author
-        self.add_item(ReminderCancelSelect(context, reminders))
+        self.member = interaction.user
+        self.add_item(ReminderCancelSelect(interaction, reminders))
     
     async def interaction_check(self, interaction: discord.Interaction):
         """Checks whether the callback should be processed."""
@@ -103,41 +103,40 @@ class Reminders(commands.Cog, name="Reminders"):
         """Initializes the class on server join."""
         await self.on_ready()
 
-    @commands.group(aliases=["remindme", "rm"], invoke_without_command=True)
-    async def remind(self, context: commands.Context, time: str, *, reminder_str: str):
+    @app_commands.command()
+    async def remindme(self, interaction: discord.Interaction, time: str, *, reminder_str: str):
         """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)."""
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
         if not is_valid:
             time_string_guess = re.sub("0.", "", f"{num_days}d{num_hours}h{num_minutes}m{num_seconds}s")
             if time_string_guess == "":
-                await context.send(f"Time string is not formatted correctly; not sure what you meant to type here.")
+                await interaction.response.send_message("Time string is not formatted correctly; not sure what you meant to type here.", ephemeral=True)
             else:
-                await context.send(f"Time string is not formatted correctly; did you mean to type {time_string_guess}?")
+                await interaction.response.send_message(f"Time string is not formatted correctly; did you mean to type {time_string_guess}?", ephemeral=True)
             return
         
         # If the next word looks like it could be part of the time, issue a warning
         next_word = reminder_str.split(" ")[0]
         _, _, _, _, is_valid = Reminders.get_datetime_parameters(next_word)
         if is_valid:
-            await context.send(f"Warning: The timestamp should be typed as one word, without spaces.")
+            await interaction.response.send_message("Warning: The timestamp should be typed as one word, without spaces.", ephemeral=True)
 
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
         timedelta = datetime.timedelta(days=num_days, hours=num_hours, minutes=num_minutes, seconds=num_seconds)
-        reminder_datetime = context.message.created_at + timedelta
-        await self.create_reminder(context.message, reminder_datetime, reminder_str)
+        reminder_datetime = datetime.datetime.now() + timedelta
+        reminder = await self.create_reminder(interaction, reminder_datetime, reminder_str)
 
         embed = RandomColorEmbed(title = "Reminder")
         embed.description = f"You set a reminder for {format_dt(reminder_datetime, style='f')}.\nReact to the message with 👍 to also be notified!"
-        await context.send(embed=embed)
-        await context.message.add_reaction("👍")
+        await interaction.response.send_message(embed=embed)
 
-    async def create_reminder(self, message: discord.Message, time: datetime.datetime, reminder_str: str):
+    async def create_reminder(self, interaction: discord.Interaction, time: datetime.datetime, reminder_str: str):
         "Creates a new reminder and adds it to the list of reminders."
-        reminder = Reminder(message, time, reminder_str)
-        if message.guild.id not in self.reminders:
-            self.reminders[message.guild.id] = set()
-        self.reminders[message.guild.id].add(reminder)
+        reminder = Reminder(None, time, reminder_str)
+        if interaction.guild.id not in self.reminders:
+            self.reminders[interaction.guild.id] = set()
+        self.reminders[interaction.guild.id].add(reminder)
 
         return reminder
         
@@ -153,34 +152,29 @@ class Reminders(commands.Cog, name="Reminders"):
         
         return (*tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups())), is_valid)
 
-    @commands.command()
-    async def reminders(self, context: commands.Context):
+    @app_commands.command()
+    async def reminders(self, interaction: discord.Interaction, ephemeral: bool = False):
         """View scheduled reminders of every server member.""" 
-        if len(self.reminders[context.guild.id]) == 0:
-            return await context.send("No reminders currently set.")
+        if len(self.reminders[interaction.guild.id]) == 0:
+            return await interaction.response.send_message("No reminders currently set.", ephemeral=ephemeral)
 
         reminder_list = RandomColorEmbed(
             title="Scheduled Reminders",
-            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[context.guild.id], key=lambda r: r.reminder_datetime.timestamp()))])
+            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[interaction.guild.id], key=lambda r: r.reminder_datetime.timestamp()))])
         )
-        await context.send(embed=reminder_list)
+        await interaction.response.send_message(embed=reminder_list, ephemeral=ephemeral)
 
-    @remind.command(aliases=["list"])
-    async def viewall(self, context: commands.Context):
-        """Alias for the reminders command."""
-        await self.reminders(context)
-
-    @remind.command()
-    async def cancel(self, context: commands.Context):
+    @app_commands.command()
+    async def remindcancel(self, interaction: discord.Interaction):
         """Cancel scheduled reminders."""
-        is_viewable = lambda reminder: context.author.guild_permissions.manage_guild or reminder.command_message.author == context.author
-        filtered_reminders = {reminder for reminder in self.reminders[context.guild.id] if is_viewable(reminder)}
+        is_viewable = lambda reminder: interaction.user.guild_permissions.manage_guild or reminder.command_message.author == interaction.user
+        filtered_reminders = {reminder for reminder in self.reminders[interaction.guild.id] if is_viewable(reminder)}
         
         if len(filtered_reminders) == 0:
-            return await context.send("No reminders currently set.")
+            return await interaction.response.send_message("No reminders currently set.", ephemeral=True)
 
-        await context.send(view=ReminderCancelView(context, filtered_reminders))
-    
+        await interaction.response.send_message(view=ReminderCancelView(interaction, filtered_reminders))
+
     @tasks.loop(seconds=0.2)
     async def send_reminders(self):
         """Send any reminders past their scheduled date."""

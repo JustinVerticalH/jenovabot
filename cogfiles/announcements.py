@@ -4,6 +4,7 @@ from ioutils import read_json, write_json
 from cogfiles.image_editing import ImageEditing
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 
 
@@ -73,7 +74,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         """Initializes the class on server join."""
         await self.on_ready()
 
-    @commands.command()
+    @app_commands.command()
     @commands.has_guild_permissions(manage_guild=True)
     async def announcementchannel(self, context: commands.Context, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
@@ -125,4 +126,5 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                     headers = json.load(file)            
                 message = random.choice(list(headers.keys()))
                 item = random.choice(headers[message])
-                await ImageEditing.send_kagetsutoya_in_channel(channel, None, message+item)
+                file = await ImageEditing.create_kagetsu_toya_file(channel, None, message+item)
+                await channel.send(file=file)

@@ -2,16 +2,44 @@ from typing import Optional
 from ioutils import RandomColorEmbed
 
 import discord
+from discord import app_commands
 from discord.ext import commands
+
+
+class ExplanationButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__()
+        self.label = "What is this?"
+    
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message("This command is for when we want to take a break during a stream. " +
+                                                "Take an AFK break, and when you come back, react to the message with 👍. " +
+                                                "When everyone has returned and reacted, the message will delete itself " +
+                                                "and the person who used the command will be pinged.", ephemeral=True)
+
+
+class CancelButton(discord.ui.Button):
+    def __init__(self, streampause_data: dict):
+        super().__init__()
+        self.label = "Cancel"
+        self.streampause_data = streampause_data
+
+    async def callback(self, interaction: discord.Interaction):
+        await self.streampause_data["message"].delete()
+        self.streampause_data = None
+        await interaction.response.send_message("Streampause cancelled.", ephemeral=True)
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        return interaction.user == self.streampause_data["author"]
 
 
 class StreamPause(commands.Cog, name="Stream Pause"):
     """Set up a message to react to when taking a break during a stream."""
-    
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.streampause_data: dict[str, discord.Message | discord.Member] = None
-    
+
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
         """Keep track of reactions added to a streampause message, if there is one."""
@@ -36,12 +64,12 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 
             await self.attempt_to_finish_streampause(reaction, member, voice_channel)
 
-    @commands.group(invoke_without_command=True)
-    async def streampause(self, context: commands.Context):
+    @app_commands.command()
+    async def streampause(self, interaction: discord.Interaction):
         """Set up a streampause message for voice channel members to react to."""
-        
-        if context.author.voice is None:
-            await context.send("This command is only usable inside a voice channel.")
+
+        if interaction.user.voice is None:
+            await interaction.response.send_message("This command is only usable inside a voice channel.")
             return
 
         if self.streampause_data is not None:
@@ -51,12 +79,15 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         embed = RandomColorEmbed(
             title = "React with 👍 when you're all set!"
         )
-        message = await context.send(embed=embed)
+        view = discord.ui.View()
+        view.add_item(ExplanationButton())
+        view.add_item(CancelButton(self.streampause_data))
+        await interaction.response.send_message(embed=embed, view=view)
 
-
+        message = await interaction.original_response()
         self.streampause_data = {
             "message": message,
-            "author": context.author
+            "author": interaction.user
         }
 
         await message.add_reaction("👍")
@@ -66,7 +97,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         except Exception:
             pass
 
-        await self.update_message(message, context.author.voice.channel)
+        await self.update_message(message, interaction.user.voice.channel)
 
     async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
         """Attempt to end a streampause upon a change to either reactions or voice channel members."""
@@ -89,7 +120,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         """Check the reacted status of each member in the voice channel and update the streampause message to reflect the status."""
         if voice_channel is None:
             return
-        
+
         members = voice_channel.members
 
         reacted_list = []
@@ -104,22 +135,6 @@ class StreamPause(commands.Cog, name="Stream Pause"):
                 reacted_members += f"\n{member.mention}"
             else:
                 not_reacted_members += f"\n{member.mention}"
-    
+
         embed = RandomColorEmbed(title=message.embeds[0].title, colour=message.embeds[0].colour, description=f"{reacted_members}\n\n{not_reacted_members}")
         await message.edit(embed=embed)
-    
-    @streampause.command()
-    async def cancel(self, context: commands.Context):
-        """Cancels the current streampause."""
-        if context.author.voice is None:
-            await context.send("This command is only usable inside a voice channel.")
-            return
-        
-        if self.streampause_data is None:
-            await context.send("Stream Pause is not currently active.")
-            return
-        
-        await context.send(f"Stream Pause cancelled.")
-
-        await self.streampause_data["message"].delete()
-        self.streampause_data = None
