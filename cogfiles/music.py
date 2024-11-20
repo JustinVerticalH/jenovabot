@@ -82,6 +82,9 @@ class Music(commands.Cog, name="Music"):
     @discord.app_commands.command()
     async def play(self, interaction: discord.Interaction, query: str):
         """Searches and plays a song from a given query."""
+        
+        if interaction.user.voice is None:
+            return await interaction.response.send_message("You're not in a voice channel!", ephemeral=True)
 
         # Get the player for this guild from cache.
         player = self.node.get_player(interaction.guild.id)
