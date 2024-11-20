@@ -22,19 +22,14 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        synced = await self.bot.tree.sync()
-        print(f"Synced {len(synced)} command(s) in {self.qualified_name}.")
-
-    @commands.group(aliases=["hltb"], invoke_without_command=True)
-    async def howlongtobeat(self, context: commands.Context, *, game_name: str):
+    @app_commands.command()
+    @app_commands.rename(game_name="search")
+    async def howlongtobeat(self, interaction: discord.Interaction, game_name: str):
         """Search HowLongToBeat with the given game name and show completion time info."""
         
         game_list = await WebScrapers.hltb_search(game_name)
         if game_list is None:
-            await context.send("Could not find a game with that title.")
-            return
+            return await interaction.response.send_message("Could not find a game with that title.", ephemeral=True)
         
         game = game_list[0]
 
@@ -48,23 +43,23 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         if game.completionist != 0:
             game_data.add_field(name="Completionist", value=f"{game.completionist} Hours", inline=False)
 
-        await context.send(embed=game_data)
+        await interaction.response.send_message(embed=game_data)
         
-    @howlongtobeat.command()
-    async def search(self, context: commands.Context, *, game_name: str):
-        """Search HowLongToBeat with the given game name and show at most the first 10 results."""
-        game_list = await WebScrapers.hltb_search(game_name)
-        if game_list is None:
-            await context.send("Could not find a game with that title.")
-            return
+    #@howlongtobeat.command()
+    #async def search(self, context: commands.Context, *, game_name: str):
+    #    """Search HowLongToBeat with the given game name and show at most the first 10 results."""
+    #    game_list = await WebScrapers.hltb_search(game_name)
+    #    if game_list is None:
+    #        await context.send("Could not find a game with that title.")
+    #        return
         
-        game_list_data = RandomColorEmbed(
-            title=f"HowLongToBeat Search: {game_name!r}",
-            description='\n'.join([f"{i+1}. [{game.game_name}]({game.game_web_link})" for i, game in enumerate(game_list[:10])])
-        )
-        game_list_data.set_thumbnail(url="https://howlongtobeat.com/img/hltb_brand.png")
+    #    game_list_data = RandomColorEmbed(
+    #        title=f"HowLongToBeat Search: {game_name!r}",
+    #        description='\n'.join([f"{i+1}. [{game.game_name}]({game.game_web_link})" for i, game in enumerate(game_list[:10])])
+    #    )
+    #    game_list_data.set_thumbnail(url="https://howlongtobeat.com/img/hltb_brand.png")
 
-        await context.send(embed=game_list_data)
+    #    await context.send(embed=game_list_data)
 
     @staticmethod
     async def hltb_search(game_name: str):
@@ -75,8 +70,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         
         return sorted(results_list, key=lambda element: element.similarity, reverse=True)
 
-    @commands.command()
-    async def heady(self, context: commands.Context, *, song_name: str):
+    @app_commands.command()
+    @app_commands.rename(song_name="search")
+    async def heady(self, interaction: discord.Interaction, song_name: str):
         """Search HeadyVersion with the given song name."""
         async with aiohttp.ClientSession() as session:
             # First, perform a GET request to get the CSRF token
@@ -91,8 +87,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                     table = soup.find("table")
                     # If table is None, we know that no results were found
                     if table is None:
-                        await context.send("Could not find a song with that title.")
-                        return
+                        return await interaction.response.send_message("Could not find a song with that title.", ephemeral=True)
                     # If the HTML has a table, then Heady is listing multiple song choices, and we choose the first one
                     else:
                         songs = table.find_all("div", class_="big_link")
@@ -122,25 +117,20 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         embed = RandomColorEmbed(title=title, url=response.url, description=description)
         embed.set_thumbnail(url="https://clipartspub.com/images/grateful-dead-clipart-template-5.png")
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command()
-    async def anilist(self, context: commands.Context, *, search: str):
-        """Search AniList for an anime or manga with a title matching the provided search."""
-        await WebScrapers.anilist_search(context, search, anime=True, manga=True)
-
-    @commands.command()
-    async def anime(self, context: commands.Context, *, search: str):
+    @app_commands.command()
+    async def anime(self, interaction: discord.Interaction, search: str):
         """Search AniList for an anime with a title matching the provided search."""
-        await WebScrapers.anilist_search(context, search, anime=True)
+        await WebScrapers.anilist_search(interaction, search, anime=True)
         
-    @commands.command()
-    async def manga(self, context: commands.Context, *, search: str):
+    @app_commands.command()
+    async def manga(self, interaction: discord.Interaction, search: str):
         """Search AniList for a manga with a title matching the provided search."""       
-        await WebScrapers.anilist_search(context, search, manga=True)
+        await WebScrapers.anilist_search(interaction, search, manga=True)
 
     @staticmethod
-    async def anilist_search(context: commands.Context, search: str, anime: bool=False, manga: bool=False):
+    async def anilist_search(interaction: discord.Interaction, search: str, anime: bool=False, manga: bool=False):
         """Query AniList's API with the given search term and the given categories (anime and/or manga)."""
         url = "https://graphql.anilist.co"
         # Here we define our query as a multi-line string
@@ -163,9 +153,10 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 response_text = await response.text()
         response_json = json.loads(response_text)
         response_url = response_json["data"]["Media"]["siteUrl"]
-        await context.send(response_url)
+        await interaction.response.send_message(response_url)
 
     @app_commands.command()
+    @app_commands.rename(vn_name="search")
     async def vndb(self, interaction: discord.Interaction, vn_name: str):
         """Search VNDB for a visual novel matching the provided search."""
         vn_request_data = f"""{{
@@ -194,7 +185,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         await interaction.response.send_message(embed=vn_data)
 
     @app_commands.command()
-    async def isthereanydeal(self, context: commands.Context, *, search: str):
+    async def isthereanydeal(self, interaction: discord.Interaction, search: str):
         """Search IsThereAnyDeal for a game matching the provided search.
         This command retrives the first 5 results of a search on ITAD. 
         For each result, prints the name of the game, the sale percent and new price, and the store with that price."""
@@ -209,7 +200,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                     content = None
 
         if content is None:
-            return await context.send("Could not find a game with that title.")
+            return await interaction.response.send_message("Could not find a game with that title.", ephemeral=True)
 
         description = ""
 
@@ -236,7 +227,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 store_name = game_deals["shop"]["name"]
                 game_url = game_deals["url"]
                     
-                description += f"**[{game_title}]({game_url})**\n**${price_new}** ({price_cut}% Off)\n{store_name}\n\n"
+                description += f"**{game_title}**\n**${price_new}** ({price_cut}% Off)\n[{store_name}]({game_url})\n\n"
 
                 valid_games += 1
                 if valid_games >= 5:
@@ -247,7 +238,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         embed = RandomColorEmbed(title="Is There Any Deal?", description=description)
         embed.set_thumbnail(url="https://i.imgur.com/kd2JUwX.png")
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
     async def ebay(self, interaction: discord.Interaction, search: str):
