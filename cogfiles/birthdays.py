@@ -27,7 +27,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         self.send_birthday_message.start()
 
         synced = await self.bot.tree.sync()
-        print(f"Synced {len(synced)} command(s) in {self.qualified_name}.")
+        print(f"Synced {len(synced)} command(s).")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
@@ -37,8 +37,8 @@ class Birthdays(commands.Cog, name="Birthdays"):
     @app_commands.command()
     @app_commands.rename(date_str="date")
     async def birthday(self, interaction: discord.Interaction, date_str: str):
-        """Saves a user's birthday, given a month, day, and optional year.
-        On the user's birthday, JENOVA will send a happy birthday message."""
+        """Saves your birthday, given a month, day, and optional year.
+        On your birthday, JENOVA will send a happy birthday message."""
         date = parse(date_str).date()
         now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("US/Eastern"))
         if (date.year == now.year): # parse defaults to current year if no year is found. This means the user did not provide a year

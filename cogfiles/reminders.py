@@ -138,8 +138,11 @@ class Reminders(commands.Cog, name="Reminders"):
 
     @app_commands.command()
     @app_commands.rename(reminder_str="message")
+    @app_commands.describe(time="When you want to be reminded")
+    @app_commands.describe(reminder_str="The message you want to be reminded of")
     async def remindme(self, interaction: discord.Interaction, time: str, *, reminder_str: str):
-        """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)."""
+        """Set a scheduled reminder. Example: remindme 1h30m Join stream!\n
+        Format time as: _d_h_m_s (may omit individual parameters)."""
         # Determine the amount of time based on the time inputted
         num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
         if not is_valid:
@@ -189,6 +192,7 @@ class Reminders(commands.Cog, name="Reminders"):
         return (*tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups())), is_valid)
 
     @app_commands.command()
+    @app_commands.describe(ephemeral="The message will be visible only to you")
     async def reminders(self, interaction: discord.Interaction, ephemeral: bool = False):
         """View scheduled reminders of every server member.""" 
         if len(self.reminders[interaction.guild.id]) == 0:
@@ -209,7 +213,7 @@ class Reminders(commands.Cog, name="Reminders"):
         if len(filtered_reminders) == 0:
             return await interaction.response.send_message("No reminders currently set.", ephemeral=True)
 
-        await interaction.response.send_message(view=ReminderCancelView(interaction, filtered_reminders))
+        await interaction.response.send_message(view=ReminderCancelView(interaction, filtered_reminders, ephemeral=True))
 
     @tasks.loop(seconds=0.2)
     async def send_reminders(self):
