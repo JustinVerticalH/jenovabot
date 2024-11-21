@@ -29,7 +29,7 @@ class ImageEditing(commands.Cog, name="Image Editing"):
         Image templates: akiha, arcueid, ciel, hisui, kohaku, satsuki.
         By default, this command picks a random image to use as the background,
         but if the user runs this command using an image name instead, that image will be used as the background."""
-        image_name = f"image_resources/{image_template.name}.png" if image_template is not None else None # An image name of None indicates a random template
+        image_name = f"image_resources/{image_template.name.lower()}.png" if image_template is not None else None # An image name of None indicates a random template
         file = await ImageEditing.create_kagetsu_toya_file(image_name, text)
         await interaction.response.send_message(file=file, ephemeral=True)
 
