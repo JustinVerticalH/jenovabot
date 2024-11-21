@@ -54,7 +54,7 @@ class Reminder:
         
         if channel is not None:
             command_message = None if json_obj["command_message_id"] < 0 else await channel.fetch_message(json_obj["command_message_id"])
-            original_message_datetime = None if json_obj["original_message_timestamp"] < 0 else datetime.datetime.fromtimestamp(json_obj["command_message_id"])
+            original_message_datetime = None if json_obj["original_message_timestamp"] < 0 else datetime.datetime.fromtimestamp(json_obj["original_message_timestamp"])
             reminder_datetime = datetime.datetime.fromtimestamp(json_obj["reminder_timestamp"])
             reminder_str = json_obj["reminder_str"]
             author = await bot.fetch_user(json_obj["author_id"]) if command_message is None else command_message.author
@@ -147,7 +147,7 @@ class Reminders(commands.Cog, name="Reminders"):
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
         reminder_datetime = datetime.datetime.now() + timedelta
-        if reminder_datetime < datetime.datetime.now():
+        if reminder_datetime <= datetime.datetime.now():
             return await interaction.response.send_message("Reminders cannot be set for the past.", ephemeral=True)
         reminder = await self.create_reminder(interaction, reminder_datetime, reminder_str)
 
