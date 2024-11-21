@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from ioutils import RandomColorEmbed, read_json, write_json
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 from discord.utils import format_dt
 
@@ -10,27 +11,40 @@ from discord.utils import format_dt
 @dataclass(frozen=True, order=True)
 class Reminder:
     """Data associated with a scheduled reminder."""
-    command_message: discord.Message = field(compare=False)
+    author: discord.User = field(compare=False)
+    channel: discord.TextChannel | discord.ForumChannel = field(compare=False)
+    command_message: discord.Message = field(compare=False) # This will be None when the reminder is created via slash command
+    original_message_datetime: datetime.datetime = field(compare=False)
     reminder_datetime: datetime.datetime
     reminder_str: str = field(compare=False)
+    subscribers: set[discord.User] = field(hash=False)
 
     def __str__(self):
-        return f"{self.command_message.author.mention} - {self.command_message.jump_url} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
+        if self.command_message is None:
+            return f"{self.author.mention} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
+        else:
+            return f"{self.command_message.author.mention} - {self.command_message.jump_url} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
 
     def __repr__(self):
-        out = f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
-        if len(out) > 100:
-            out = out[:97] + "..."
+        MAX_LENGTH = 100
+        if self.command_message is None:
+            out = f"{self.author.name} - #{self.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
+        else:
+            out = f"{self.command_message.author.name} - #{self.command_message.channel.name} @ {self.reminder_datetime:%a %b %d, %I:%M %p}: {self.reminder_str!r}"
+        if len(out) > MAX_LENGTH:
+            out = out[:MAX_LENGTH-3] + "..."
         return out
-
 
     def to_json(self) -> dict[str, int | float | str]:
         """Convert the current reminder object to a JSON string."""
         return {
-            "channel_id": self.command_message.channel.id,
-            "command_message_id": self.command_message.id,
+            "author_id": self.author.id,
+            "channel_id": self.channel.id,
+            "command_message_id": -1 if self.command_message is None else self.command_message.id,
+            "original_message_timestamp": -1 if self.original_message_datetime is None else self.original_message_datetime.timestamp(),
             "reminder_timestamp": self.reminder_datetime.timestamp(),
-            "reminder_str": self.reminder_str
+            "reminder_str": self.reminder_str,
+            "subscriber_ids": [subscriber.id for subscriber in self.subscribers]
         }
 
     @staticmethod
@@ -39,16 +53,39 @@ class Reminder:
         channel = bot.get_channel(json_obj["channel_id"])
         
         if channel is not None:
-            command_message = await channel.fetch_message(json_obj["command_message_id"])
+            command_message = None if json_obj["command_message_id"] < 0 else await channel.fetch_message(json_obj["command_message_id"])
+            original_message_datetime = None if json_obj["original_message_timestamp"] < 0 else datetime.datetime.fromtimestamp(json_obj["original_message_timestamp"])
             reminder_datetime = datetime.datetime.fromtimestamp(json_obj["reminder_timestamp"])
             reminder_str = json_obj["reminder_str"]
+            author = await bot.fetch_user(json_obj["author_id"]) if command_message is None else command_message.author
+            channel = await bot.fetch_channel(json_obj["channel_id"]) if command_message is None else command_message.channel
+            subscribers = [] if json_obj["subscriber_ids"] is None else [await bot.fetch_user(subscriber_id) for subscriber_id in json_obj["subscriber_ids"]]
 
-            return Reminder(command_message, reminder_datetime, reminder_str)    
+            return Reminder(author, channel, command_message, original_message_datetime, reminder_datetime, reminder_str, subscribers)
+    
+    def copy(self):
+        # We need to ensure that different Reminder objects do not point to the same subscribers list
+        # This ensures that when the list of subscribers in one Reminder is modified, copies of that Reminder are not also modified (such as Reminders._cached_reminders)
+        return Reminder(self.author, self.channel, self.command_message, self.original_message_datetime, self.reminder_datetime, self.reminder_str, self.subscribers.copy())
+
+class ReminderSubscribeButton(discord.ui.Button):
+
+    def __init__(self, reminder: Reminder):
+        super().__init__()
+        self.reminder = reminder
+        self.emoji = "👍"
+        self.label = "I want to be reminded too!"
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user == self.reminder.author or interaction.user in self.reminder.subscribers:
+            return await interaction.response.send_message("You are already set to be notified of this reminder.", ephemeral=True) #TODO: Make this a toggleable button
+        self.reminder.subscribers.append(interaction.user)
+        return await interaction.response.send_message(f"You will be reminded of this {format_dt(self.reminder.reminder_datetime, style='R')}", ephemeral=True)
 
 class ReminderCancelSelect(discord.ui.Select):
 
-    def __init__(self, context: commands.Context, reminders: set[Reminder]):
-        self.bot = context.bot
+    def __init__(self, interaction: discord.Interaction, reminders: set[Reminder]):
+        self.bot = interaction.client
         self.reminders = reminders
 
         options = [discord.SelectOption(label=repr(reminder)) for reminder in sorted(reminders, key=lambda r: r.reminder_datetime.timestamp())]
@@ -66,10 +103,10 @@ class ReminderCancelSelect(discord.ui.Select):
         await interaction.response.send_message(embed=cancelled_reminder_list, ephemeral=True)
 
 class ReminderCancelView(discord.ui.View):
-    def __init__(self, context: commands.Context, reminders: set[Reminder]):
+    def __init__(self, interaction: discord.Interaction, reminders: set[Reminder]):
         super().__init__()
-        self.member = context.author
-        self.add_item(ReminderCancelSelect(context, reminders))
+        self.member = interaction.user
+        self.add_item(ReminderCancelSelect(interaction, reminders))
     
     async def interaction_check(self, interaction: discord.Interaction):
         """Checks whether the callback should be processed."""
@@ -93,7 +130,7 @@ class Reminders(commands.Cog, name="Reminders"):
                 self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_json(guild.id, "reminders")}
             except json.JSONDecodeError as e:
                 print()
-            self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
+            self._cached_reminders[guild.id] = deepcopy(self.reminders[guild.id])
         
         self.send_reminders.start()
         self.sync_json.start()
@@ -103,84 +140,55 @@ class Reminders(commands.Cog, name="Reminders"):
         """Initializes the class on server join."""
         await self.on_ready()
 
-    @commands.group(aliases=["remindme", "rm"], invoke_without_command=True)
-    async def remind(self, context: commands.Context, time: str, *, reminder_str: str):
-        """Set a scheduled reminder. Format time as: _d_h_m_s (may omit individual parameters)."""
-        # Determine the amount of time based on the time inputted
-        num_days, num_hours, num_minutes, num_seconds, is_valid = Reminders.get_datetime_parameters(time)
-        if not is_valid:
-            time_string_guess = re.sub("0.", "", f"{num_days}d{num_hours}h{num_minutes}m{num_seconds}s")
-            if time_string_guess == "":
-                await context.send(f"Time string is not formatted correctly; not sure what you meant to type here.")
-            else:
-                await context.send(f"Time string is not formatted correctly; did you mean to type {time_string_guess}?")
-            return
-        
-        # If the next word looks like it could be part of the time, issue a warning
-        next_word = reminder_str.split(" ")[0]
-        _, _, _, _, is_valid = Reminders.get_datetime_parameters(next_word)
-        if is_valid:
-            await context.send(f"Warning: The timestamp should be typed as one word, without spaces.")
-
+    @app_commands.command()
+    @app_commands.rename(reminder_str="message")
+    async def remindme(self, interaction: discord.Interaction, reminder_str: str, days: int=0, hours: int=0, minutes: int=0, seconds: int=0):
+        """Set a scheduled reminder. JENOVA will ping you once the time has passed."""
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
-        timedelta = datetime.timedelta(days=num_days, hours=num_hours, minutes=num_minutes, seconds=num_seconds)
-        reminder_datetime = context.message.created_at + timedelta
-        await self.create_reminder(context.message, reminder_datetime, reminder_str)
+        timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+        reminder_datetime = datetime.datetime.now() + timedelta
+        if reminder_datetime <= datetime.datetime.now():
+            return await interaction.response.send_message("Reminders cannot be set for the past.", ephemeral=True)
+        reminder = await self.create_reminder(interaction, reminder_datetime, reminder_str)
 
-        embed = RandomColorEmbed(title = "Reminder")
-        embed.description = f"You set a reminder for {format_dt(reminder_datetime, style='f')}.\nReact to the message with 👍 to also be notified!"
-        await context.send(embed=embed)
-        await context.message.add_reaction("👍")
+        embed = RandomColorEmbed(title="Reminder")
+        embed.description = f"You set a reminder for {format_dt(reminder_datetime, style='f')}:\n{reminder_str}"
+        view = discord.ui.View()
+        view.add_item(ReminderSubscribeButton(reminder))
+        await interaction.response.send_message(embed=embed, view=view)
 
-    async def create_reminder(self, message: discord.Message, time: datetime.datetime, reminder_str: str):
+    async def create_reminder(self, interaction: discord.Interaction, time: datetime.datetime, reminder_str: str):
         "Creates a new reminder and adds it to the list of reminders."
-        reminder = Reminder(message, time, reminder_str)
-        if message.guild.id not in self.reminders:
-            self.reminders[message.guild.id] = set()
-        self.reminders[message.guild.id].add(reminder)
+        reminder = Reminder(interaction.user, interaction.channel, None, datetime.datetime.now(), time, reminder_str, [])
+        if interaction.guild.id not in self.reminders:
+            self.reminders[interaction.guild.id] = set()
+        self.reminders[interaction.guild.id].add(reminder)
 
         return reminder
-        
-    @staticmethod
-    def get_datetime_parameters(time: str):
-        """Convert a time string into parameters for a datetime object."""
-        is_valid = True
 
-        timer_parameters = re.fullmatch("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
-        if timer_parameters is None:
-            timer_parameters = re.search("(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", time)
-            is_valid = False
-        
-        return (*tuple(map(lambda t: int(0 if t is None else t), timer_parameters.groups())), is_valid)
-
-    @commands.command()
-    async def reminders(self, context: commands.Context):
+    @app_commands.command()
+    async def reminders(self, interaction: discord.Interaction):
         """View scheduled reminders of every server member.""" 
-        if len(self.reminders[context.guild.id]) == 0:
-            return await context.send("No reminders currently set.")
+        if len(self.reminders[interaction.guild.id]) == 0:
+            return await interaction.response.send_message("No reminders currently set.", ephemeral=True)
 
         reminder_list = RandomColorEmbed(
             title="Scheduled Reminders",
-            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[context.guild.id], key=lambda r: r.reminder_datetime.timestamp()))])
+            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[interaction.guild.id], key=lambda r: r.reminder_datetime.timestamp()))])
         )
-        await context.send(embed=reminder_list)
+        await interaction.response.send_message(embed=reminder_list, ephemeral=True)
 
-    @remind.command(aliases=["list"])
-    async def viewall(self, context: commands.Context):
-        """Alias for the reminders command."""
-        await self.reminders(context)
-
-    @remind.command()
-    async def cancel(self, context: commands.Context):
+    @app_commands.command()
+    async def remindcancel(self, interaction: discord.Interaction):
         """Cancel scheduled reminders."""
-        is_viewable = lambda reminder: context.author.guild_permissions.manage_guild or reminder.command_message.author == context.author
-        filtered_reminders = {reminder for reminder in self.reminders[context.guild.id] if is_viewable(reminder)}
+        is_viewable = lambda reminder: interaction.user.guild_permissions.manage_guild or reminder.author == interaction.user
+        filtered_reminders = {reminder for reminder in self.reminders[interaction.guild.id] if is_viewable(reminder)}
         
         if len(filtered_reminders) == 0:
-            return await context.send("No reminders currently set.")
+            return await interaction.response.send_message("No reminders currently set.", ephemeral=True)
 
-        await context.send(view=ReminderCancelView(context, filtered_reminders))
-    
+        await interaction.response.send_message(view=ReminderCancelView(interaction, filtered_reminders), ephemeral=True)
+
     @tasks.loop(seconds=0.2)
     async def send_reminders(self):
         """Send any reminders past their scheduled date."""
@@ -189,16 +197,16 @@ class Reminders(commands.Cog, name="Reminders"):
             for reminder in reminders:
                 if reminder.reminder_datetime.timestamp() <= datetime.datetime.now().timestamp():
                     # Read the list of reactions to the message, and create a string to mention each user (besides the bot) who reacted
-                    subscribers_mention = ""
-                    for reaction in reminder.command_message.reactions:
-                        if reaction.emoji == "👍":
-                            subscribers = [user async for user in reaction.users()]
-                            subscribers_mention = "\n"
-                            for user in subscribers:
-                                if user != self.bot.user and user != reminder.command_message.author:
-                                    subscribers_mention += user.mention + " "
+                    if reminder.command_message is None: # This reminder was created via slash command
+                        subscribers_mention = "\n" + " ".join(user.mention for user in reminder.subscribers if user != self.bot.user and user != reminder.author)
+                        await reminder.channel.send(f"**Reminder** from {format_dt(reminder.original_message_datetime, 'R')}\n\"{reminder.reminder_str}\"\n{reminder.author.mention}{subscribers_mention}")
+                    else:
+                        for reaction in reminder.command_message.reactions:
+                            if reaction.emoji == "👍":
+                                subscribers = [user async for user in reaction.users()]
+                                subscribers_mention = "\n" + " ".join(user.mention for user in subscribers if user != self.bot.user and user != reminder.command_message.author)
+                                await reminder.command_message.reply(f"{reminder.reminder_str} {subscribers_mention}")
 
-                    await reminder.command_message.reply(f"{reminder.reminder_str} {subscribers_mention}")
                     self.reminders[guild.id].remove(reminder)
     
     @tasks.loop(seconds=0.3)
@@ -207,4 +215,10 @@ class Reminders(commands.Cog, name="Reminders"):
         for guild in self.bot.guilds:
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
                 write_json(guild.id, "reminders", value=[reminder.to_json() for reminder in self.reminders[guild.id]])
-                self._cached_reminders[guild.id] = self.reminders[guild.id].copy()
+                self._cached_reminders[guild.id] = deepcopy(self.reminders[guild.id])
+    
+def deepcopy(reminders: set[Reminder]) -> set[Reminder]:
+    copied_reminders = set()
+    for reminder in reminders:
+        copied_reminders.add(reminder.copy())
+    return copied_reminders

@@ -1,28 +1,16 @@
-from typing import Optional
 from ioutils import RandomColorEmbed
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 
 class StreamPause(commands.Cog, name="Stream Pause"):
     """Set up a message to react to when taking a break during a stream."""
-    
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.streampause_data: dict[str, discord.Message | discord.Member] = None
-    
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
-        """Keep track of reactions added to a streampause message, if there is one."""
-        if self.streampause_data is not None:
-            await self.attempt_to_finish_streampause(reaction, user, user.voice.channel if user.voice else None)
-
-    @commands.Cog.listener()
-    async def on_reaction_remove(self, reaction: discord.Reaction, user: discord.Member):
-        """Keep track of reactions added to a streampause message, if there is one."""
-        if self.streampause_data is not None:
-            await self.attempt_to_finish_streampause(reaction, user, user.voice.channel if user.voice else None)
+        self.streampause_data: dict[str, discord.Message | discord.Member | set[discord.Member]] = None
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -31,95 +19,137 @@ class StreamPause(commands.Cog, name="Stream Pause"):
             voice_channel = before.channel if after.channel is None else after.channel if before.channel is None else None
 
             # Fetching the message again to get the most updated state of the message
-            message = await self.streampause_data["message"].fetch()
-            reaction = discord.utils.get(message.reactions, emoji="👍")
+            await self.streampause_data["message"].fetch()
 
-            await self.attempt_to_finish_streampause(reaction, member, voice_channel)
+            await self.attempt_to_finish_streampause(member, voice_channel)
 
-    @commands.group(invoke_without_command=True)
-    async def streampause(self, context: commands.Context):
+    @app_commands.command()
+    async def streampause(self, interaction: discord.Interaction):
         """Set up a streampause message for voice channel members to react to."""
-        
-        if context.author.voice is None:
-            await context.send("This command is only usable inside a voice channel.")
-            return
+
+        if interaction.user.voice is None:
+            return await interaction.response.send_message("This command is only usable inside a voice channel.")
 
         if self.streampause_data is not None:
             await self.streampause_data["message"].delete()
             self.streampause_data = None
 
         embed = RandomColorEmbed(
-            title = "React with 👍 when you're all set!"
+            title = "Click the button when you're all set!"
         )
-        message = await context.send(embed=embed)
+        view = discord.ui.View()
+        view.add_item(ReturnButton(self))
+        view.add_item(UnReturnButton(self))
+        view.add_item(CancelButton(self))
+        view.add_item(ExplanationButton())
+        await interaction.response.send_message(embed=embed, view=view)
 
-
+        message = await interaction.original_response()
         self.streampause_data = {
             "message": message,
-            "author": context.author
+            "author": interaction.user,
+            "reacted_users": set()
         }
-
-        await message.add_reaction("👍")
         
         try:
             await message.pin()
         except Exception:
             pass
 
-        await self.update_message(message, context.author.voice.channel)
+        await self.update_message(message, interaction.user.voice.channel)
 
-    async def attempt_to_finish_streampause(self, reaction: discord.Reaction, user: discord.Member, voice_channel: Optional[discord.VoiceChannel]):
+    async def attempt_to_finish_streampause(self, user: discord.Member, voice_channel: discord.VoiceChannel | None):
         """Attempt to end a streampause upon a change to either reactions or voice channel members."""
-        if user.bot or reaction.message != self.streampause_data["message"] or reaction.emoji != "👍" or voice_channel is None:
+        if user.bot or voice_channel is None:
             return
 
-        await self.update_message(reaction.message, voice_channel)
+        message = self.streampause_data["message"]
+        await self.update_message(message, voice_channel)
 
-        reacted_members = {user async for user in reaction.users()}
-        vc_members = set(voice_channel.members)
+        vc_members = StreamPause.get_non_bot_users(voice_channel)
 
-        if reacted_members & vc_members == vc_members:
+        if self.streampause_data["reacted_users"] & vc_members == vc_members:
             original_author = self.streampause_data["author"]
-            await reaction.message.channel.send(f"{original_author.mention} Everyone's here!")
+            await message.channel.send(f"{original_author.mention} Everyone's here!")
 
-            await reaction.message.delete()
+            await message.delete()
             self.streampause_data = None
 
-    async def update_message(self, message: discord.Message, voice_channel: Optional[discord.VoiceChannel]):
+    async def update_message(self, message: discord.Message, voice_channel: discord.VoiceChannel | None):
         """Check the reacted status of each member in the voice channel and update the streampause message to reflect the status."""
         if voice_channel is None:
             return
-        
-        members = voice_channel.members
 
-        reacted_list = []
-        if message.reactions:
-            reacted_list = [user async for user in message.reactions[0].users() if not user.bot]
+        reacted_members = "**Back:**"
+        not_reacted_members = "**Not Back:**"
 
-        reacted_members = "**Reacted:**"
-        not_reacted_members = "**Not Reacted:**"
+        vc_members = StreamPause.get_non_bot_users(voice_channel)
 
-        for member in members:
-            if member in reacted_list:
+        for member in vc_members:
+            if member in self.streampause_data["reacted_users"]:
                 reacted_members += f"\n{member.mention}"
             else:
                 not_reacted_members += f"\n{member.mention}"
-    
+
         embed = RandomColorEmbed(title=message.embeds[0].title, colour=message.embeds[0].colour, description=f"{reacted_members}\n\n{not_reacted_members}")
         await message.edit(embed=embed)
-    
-    @streampause.command()
-    async def cancel(self, context: commands.Context):
-        """Cancels the current streampause."""
-        if context.author.voice is None:
-            await context.send("This command is only usable inside a voice channel.")
-            return
-        
-        if self.streampause_data is None:
-            await context.send("Stream Pause is not currently active.")
-            return
-        
-        await context.send(f"Stream Pause cancelled.")
 
-        await self.streampause_data["message"].delete()
-        self.streampause_data = None
+    @staticmethod
+    def get_non_bot_users(voice_channel: discord.VoiceChannel) -> set[discord.Member]:
+        return set(member for member in voice_channel.members if not member.bot)
+
+class ReturnButton(discord.ui.Button):
+    def __init__(self, streampause: StreamPause):
+        super().__init__()
+        self.streampause = streampause
+        self.emoji = "👍"
+        self.label = "I'm back!"
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user not in self.streampause.streampause_data["reacted_users"]:
+            self.streampause.streampause_data["reacted_users"].add(interaction.user)
+            await self.streampause.attempt_to_finish_streampause(interaction.user, interaction.user.voice.channel)
+            await interaction.response.send_message("Welcome back!", ephemeral=True)
+        else:
+            await interaction.response.defer()
+
+class UnReturnButton(discord.ui.Button):
+    def __init__(self, streampause: StreamPause):
+        super().__init__()
+        self.streampause = streampause
+        self.emoji = "👎"
+        self.label = "I'm not back!"
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user in self.streampause.streampause_data["reacted_users"]:
+            self.streampause.streampause_data["reacted_users"].discard(interaction.user)
+            await self.streampause.attempt_to_finish_streampause(interaction.user, interaction.user.voice.channel)
+            await interaction.response.send_message("Come back soon!", ephemeral=True)
+        else:
+            await interaction.response.defer()
+
+class CancelButton(discord.ui.Button):
+    def __init__(self, streampause: StreamPause):
+        super().__init__()
+        self.label = "Cancel"
+        self.streampause = streampause
+        self.style = discord.ButtonStyle.red
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user == self.streampause.streampause_data["author"]:
+            await self.streampause.streampause_data["message"].delete()
+            self.streampause.streampause_data = None
+            await interaction.response.send_message("Streampause cancelled.")
+        else:
+            await interaction.response.defer()
+
+class ExplanationButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__()
+        self.label = "What is this?"
+    
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message("This command is for when we want to take a break during a stream. " +
+                                                "Take an AFK break, and when you come back, click the 👍 button. " +
+                                                "When everyone has come back and clicked, the message will delete itself " +
+                                                "and the person who used the command will be pinged.", ephemeral=True)        

@@ -4,6 +4,7 @@ from ioutils import read_json, write_json
 from cogfiles.image_editing import ImageEditing
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 
 
@@ -73,29 +74,6 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         """Initializes the class on server join."""
         await self.on_ready()
 
-    @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def announcementchannel(self, context: commands.Context, channel: discord.TextChannel):
-        """Set which channel to send periodic announcement messages."""
-        write_json(context.guild.id, "periodic_announcement_channel_id", value=channel.id)
-        await context.send(f"Periodic announcement channel is set to {channel.mention}")
-
-    @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def dailymessagechannel(self, context: commands.Context, channel: discord.TextChannel):
-        """Set which channel to send daily messages."""
-        write_json(context.guild.id, "daily_message_channel_id", value=channel.id)
-        await context.send(f"Daily message channel is set to {channel.mention}")
-
-    @announcementchannel.error
-    @dailymessagechannel.error
-    async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
-        """Handles errors for the given command (insufficient permissions, etc)."""
-        if isinstance(error, commands.errors.MissingPermissions):
-            await context.send("User needs Manage Server permission to use this command.")
-        elif isinstance(error, commands.errors.ChannelNotFound):
-            await context.send("Channel not found. Try again.")
-
     def create_announcement_loop(self, config: AnnouncementConfig):
         """Creates a task loop that runs and sends a message at the times given by the config."""
         @tasks.loop(time=config.time)
@@ -125,4 +103,5 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                     headers = json.load(file)            
                 message = random.choice(list(headers.keys()))
                 item = random.choice(headers[message])
-                await ImageEditing.send_kagetsutoya_in_channel(channel, None, message+item)
+                file = await ImageEditing.create_kagetsu_toya_file(channel, None, message+item)
+                await channel.send(file=file)

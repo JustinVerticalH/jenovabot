@@ -1,9 +1,25 @@
 import datetime, zoneinfo
 from ioutils import read_json, write_json, RandomColorEmbed
-from dateutil.parser import parse
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
+from enum import Enum
+
+
+class Month(Enum):
+    January = 1
+    February = 2
+    March = 3
+    April = 4
+    May = 5
+    June = 6
+    July = 7
+    August = 8
+    September = 9
+    October = 10
+    November = 11
+    December = 12
 
 class Birthdays(commands.Cog, name="Birthdays"):
     "Send messages on members' birthdays."
@@ -14,7 +30,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialize the list of birthdays."""
+        """Initialize the list of birthdays and sync application commands."""
         for guild in self.bot.guilds:
             guild_birthdays = read_json(guild.id, "birthdays")
             if guild_birthdays is None:
@@ -30,44 +46,28 @@ class Birthdays(commands.Cog, name="Birthdays"):
         """Initializes the class on server join."""
         await self.on_ready()
 
-    @commands.group(invoke_without_command=True)
-    async def birthday(self, context: commands.Context, *, date_str: str):
-        """Registers a user's birthday, given a month, day, and optional year."""
-        date = parse(date_str).date()
-        now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("US/Eastern"))
-        if (date.year == now.year): # parse defaults to current year if no year is found. This means the user did not provide a year
-            date = datetime.date(year=datetime.MINYEAR, month=date.month, day=date.day) # Setting the year to MINYEAR represents no year provided
-        
-        if self.birthdays[context.guild.id] is None:
-            self.birthdays[context.guild.id] = {}
-        self.birthdays[context.guild.id][context.author] = date
-        write_json(context.guild.id, "birthdays", value={user.id: birthday.isoformat() for user, birthday in self.birthdays[context.guild.id].items()})
-        await context.message.add_reaction("👍")
+    @app_commands.command()
+    async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 0, 31], year: int | None):
+        """Saves your birthday. On your birthday, JENOVA will send a happy birthday message."""
+        try:
+            date = datetime.date(year=datetime.MINYEAR if year is None else year, month=month.value, day=day) # Setting the year to MINYEAR represents no year provided
+        except ValueError:
+            return await interaction.response.send_message("Invalid date.", ephemeral=True)
+        if self.birthdays[interaction.guild.id] is None:
+            self.birthdays[interaction.guild.id] = {}
+        self.birthdays[interaction.guild.id][interaction.user] = date
+        write_json(interaction.guild.id, "birthdays", value={user.id: birthday.isoformat() for user, birthday in self.birthdays[interaction.guild.id].items()})
+        await interaction.response.send_message(f"Added your birthday: {month.name} {ordinal(day)}{'' if year == None else f', {year}'}", ephemeral=True)
 
-    @birthday.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def channel(self, context: commands.Context, channel: discord.TextChannel):
-        """Set which channel to send event alert ping messages."""
-        write_json(context.guild.id, "birthday_channel_id", value=channel.id)
-        await context.message.add_reaction("👍")
-
-    @channel.error
-    async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
-        """Handles errors for the given command (insufficient permissions, etc)."""
-        if isinstance(error, commands.errors.MissingPermissions):
-            await context.send("User needs Manage Server permission to use this command.")
-        elif isinstance(error, commands.errors.ChannelNotFound):
-            await context.send("Channel not found. Try again.")
-
-    @commands.command(aliases=["nextbirthdays"])
-    async def birthdays(self, context: commands.Context):
+    @app_commands.command()
+    async def birthdays(self, interaction: discord.Interaction):
         """Lists the next 10 birthdays in this server."""
         # Sort the birthday dates by month and day only, not year
         # Split the dates into two groups: dates that have already happened this year, and dates that haven't
         # Add the dates that have already happened after the dates that haven't
         # This gives a list of upcoming birthdays in sorted order, including some dates from next year after this year
         now = datetime.datetime.now().date()
-        next_birthdays = {user: birthday.replace(year=now.year) for user, birthday in self.birthdays[context.guild.id].items()}
+        next_birthdays = {user: birthday.replace(year=now.year) for user, birthday in self.birthdays[interaction.guild.id].items()}
         sorted_birthdays = {user: birthday for user, birthday in sorted(next_birthdays.items(), key=lambda item: item[1])}
         sorted_birthdays = {user: birthday for user, birthday in sorted_birthdays.items() if now < birthday} | {user: birthday.replace(year=now.year+1) for user, birthday in sorted_birthdays.items() if now >= birthday}
 
@@ -78,7 +78,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
             description += f"**{birthday_str}**\n{user.mention}\n\n"
 
         embed = RandomColorEmbed(title="Upcoming Birthdays", description=description)
-        await context.send(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def send_birthday_message(self):

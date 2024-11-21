@@ -1,5 +1,6 @@
 from ioutils import read_json, write_json
 import discord, datetime
+from discord import app_commands
 from discord.ext import commands, tasks
 from discord.utils import format_dt
 
@@ -109,22 +110,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
         if event in self.wait_until_announcement_tasks:
             self.wait_until_announcement_tasks[event].cancel()
             del self.wait_until_announcement_tasks[event]
-
-    @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def alertchannel(self, context: commands.Context, channel: discord.TextChannel | discord.ForumChannel):
-        """Set which channel to send event alert ping messages."""
-        write_json(context.guild.id, "scheduled_event_alert_channel_id", value=channel.id)
-        await context.send(f"Event alert channel is set to {channel.mention}")
-    
-    @alertchannel.error
-    async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
-        """Handles errors for the given command (insufficient permissions, etc)."""
-        if isinstance(error, commands.errors.MissingPermissions):
-            await context.send("User needs Manage Server permission to use this command.")
-        elif isinstance(error, commands.errors.ChannelNotFound):
-            await context.send("Channel not found. Try again.")
-
+            
     @staticmethod
     async def get_event_creator(event: discord.ScheduledEvent):
         """Returns the creator of the given event."""

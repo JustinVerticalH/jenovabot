@@ -8,6 +8,8 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        with open("copypastas.json", "r") as file:
+            self.copypastas = json.load(file)
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -15,9 +17,6 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
         # The bot shouldn't respond to its own copypastas
         if message.author == self.bot.user:
             return
-        
-        with open("copypastas.json", "r") as file:
-            copypastas = json.load(file)
-        for phrase in copypastas:
+        for phrase in self.copypastas:
             if phrase in message.content.lower():
-                await message.channel.send(copypastas[phrase])
+                await message.channel.send(self.copypastas[phrase])
