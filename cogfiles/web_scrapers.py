@@ -9,12 +9,18 @@ from thefuzz import process
 from discord import app_commands
 from discord.ext import commands
 from discord.utils import format_dt
+from enum import Enum
 
 
 ITAD_API_KEY = os.getenv("ITAD_API_KEY")
 STEAMGRIDDB_API_KEY = os.getenv("STEAMGRIDDB_API_KEY")
 EBAY_APP_NAME = os.getenv("EBAY_APP_NAME")
 
+
+class AnilistSearchType(Enum):
+    Anime = 1
+    Manga = 2
+    Both = 3
 
 class WebScrapers(commands.Cog, name="Web Scrapers"):
     """Grab data from various websites and send it."""
@@ -123,27 +129,17 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command()
-    async def anime(self, interaction: discord.Interaction, search: str):
-        """Search AniList for an anime with a title matching the provided search."""
-        await WebScrapers.anilist_search(interaction, search, anime=True)
-        
-    @app_commands.command()
-    async def manga(self, interaction: discord.Interaction, search: str):
-        """Search AniList for a manga with a title matching the provided search."""       
-        await WebScrapers.anilist_search(interaction, search, manga=True)
-
-    @staticmethod
-    async def anilist_search(interaction: discord.Interaction, search: str, anime: bool=False, manga: bool=False):
-        """Query AniList's API with the given search term and the given categories (anime and/or manga)."""
+    async def anilist(self, interaction: discord.Interaction, search: str, type: AnilistSearchType | None):
+        """Search AniList for an anime and/or manga with a title matching the provided search."""
         url = "https://graphql.anilist.co"
         # Here we define our query as a multi-line string
-        type = "" if manga and anime else ", type: MANGA" if manga else ", type: ANIME"
+        type_str = ", type: ANIME" if type == AnilistSearchType.Anime else ", type: MANGA" if type == AnilistSearchType.Manga else ""
         query = """
         query ($search: String) {
             Media (search: $search%s) {
                 siteUrl
             }
-        }""" % (type)
+        }""" % (type_str)
 
         # Define our query variables and values that will be used in the query request
         variables = {

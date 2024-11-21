@@ -143,7 +143,7 @@ class Reminders(commands.Cog, name="Reminders"):
     @app_commands.command()
     @app_commands.rename(reminder_str="message")
     async def remindme(self, interaction: discord.Interaction, reminder_str: str, days: int=0, hours: int=0, minutes: int=0, seconds: int=0):
-        """Set a scheduled reminder. Example: remindme 1h30m Join stream!"""
+        """Set a scheduled reminder. JENOVA will ping you once the time has passed."""
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
         reminder_datetime = datetime.datetime.now() + timedelta

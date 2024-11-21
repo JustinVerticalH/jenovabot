@@ -316,8 +316,11 @@ class Music(commands.Cog, name="Music"):
     async def seek(self, interaction: discord.Interaction, hours: int=0, minutes: int=0, seconds: int=0):
         """Jumps to the given time in the currently playing song."""
 
-        milliseconds = seconds*1000 + minutes*(60000) + hours*(3600000)
         player = self.node.get_player(interaction.guild.id)
+        if player is None:
+            return await interaction.response.send_message("No player in voice channel.", ephemeral=True)
+        
+        milliseconds = seconds*1000 + minutes*(60000) + hours*(3600000)
         await player.seek(milliseconds)
 
         position = timedelta(seconds=milliseconds // 1000)

@@ -1,4 +1,4 @@
-import discord, json
+import discord
 
 from discord import app_commands
 from discord.ext import commands
@@ -25,8 +25,12 @@ class Admin(commands.Cog, name="Administrator"):
     def __init__(self, bot: commands.Bot):
         "Initialize the cog."
         self.bot = bot
-        with open("copypastas.json", "r") as file:
-            self.copypastas = json.load(file)
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        "Sync the application commands."
+        synced = await self.bot.tree.sync()
+        print(f"Synced {len(synced)} command(s).")
     
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_guild=True)
