@@ -21,7 +21,7 @@ class Reminder:
 
     def __str__(self):
         if self.command_message is None:
-            return f"{self.author.mention} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
+            return f"{self.author.mention} - {self.channel.jump_url} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
         else:
             return f"{self.command_message.author.mention} - {self.command_message.jump_url} @ {format_dt(self.reminder_datetime, style='F')}: {self.reminder_str!r}"
 
