@@ -14,6 +14,7 @@ from cogfiles.web_scrapers import WebScrapers
 from cogfiles.polling import Polling
 from cogfiles.birthdays import Birthdays
 from cogfiles.image_editing import ImageEditing
+from cogfiles.admin import Admin
 
 def main():
     token = os.getenv("TOKEN")
@@ -24,7 +25,8 @@ def main():
     intents = discord.Intents.all()
     bot = commands.Bot(command_prefix=command_prefix, activity=activity, intents=intents, enable_debug_events=True)
 
-    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), Music(bot), WebScrapers(bot), Polling(bot), Birthdays(bot), ImageEditing(bot)
+    cogs = Copypastas(bot), EventAlerts(bot), StreamPause(bot), Reminders(bot), Announcements(bot), \
+        Music(bot), WebScrapers(bot), Polling(bot), Birthdays(bot), ImageEditing(bot), Admin(bot)
     for cog in cogs:
         asyncio.run(bot.add_cog(cog))
 

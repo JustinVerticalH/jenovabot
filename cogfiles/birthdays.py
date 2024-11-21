@@ -51,21 +51,6 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await interaction.response.send_message("Added your birthday", ephemeral=True)
 
     @app_commands.command()
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def birthdaychannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        """Set which channel to send event alert ping messages."""
-        write_json(interaction.guild.id, "birthday_channel_id", value=channel.id)
-        await interaction.response.send_message(f"Birthday channel is set to {channel.mention}", ephemeral=True)
-
-    @birthdaychannel.error
-    async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-        """Handles errors for the given command (insufficient permissions, etc)."""
-        if isinstance(error, app_commands.errors.MissingPermissions):
-            await interaction.response.send_message("You need the Manage Server permission to use this command.", ephemeral=True)
-        elif isinstance(error, commands.errors.ChannelNotFound):
-            await interaction.response.send_message("Channel not found. Try again.", ephemeral=True)
-
-    @app_commands.command()
     async def birthdays(self, interaction: discord.Interaction):
         """Lists the next 10 birthdays in this server."""
         # Sort the birthday dates by month and day only, not year

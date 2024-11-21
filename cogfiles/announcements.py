@@ -74,29 +74,6 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         """Initializes the class on server join."""
         await self.on_ready()
 
-    @app_commands.command()
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def announcementchannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        """Set which channel to send periodic announcement messages."""
-        write_json(interaction.guild.id, "periodic_announcement_channel_id", value=channel.id)
-        await interaction.response.send_message(f"Periodic announcement channel is set to {channel.mention}", ephemeral=True)
-
-    @app_commands.command()
-    @app_commands.checks.has_permissions(manage_guild=True)
-    async def dailymessagechannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        """Set which channel to send daily messages."""
-        write_json(interaction.guild.id, "daily_message_channel_id", value=channel.id)
-        await interaction.response.send_message(f"Daily message channel is set to {channel.mention}", ephemeral=True)
-
-    @announcementchannel.error
-    @dailymessagechannel.error
-    async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-        """Handles errors for the given command (insufficient permissions, etc)."""
-        if isinstance(error, app_commands.errors.MissingPermissions):
-            await interaction.response.send_message("You need the Manage Server permission to use this command.", ephemeral=True)
-        elif isinstance(error, commands.errors.ChannelNotFound):
-            await interaction.response.send_message("Channel not found. Try again.", ephemeral=True)
-
     def create_announcement_loop(self, config: AnnouncementConfig):
         """Creates a task loop that runs and sends a message at the times given by the config."""
         @tasks.loop(time=config.time)
