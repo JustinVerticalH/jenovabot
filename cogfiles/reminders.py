@@ -147,6 +147,8 @@ class Reminders(commands.Cog, name="Reminders"):
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
         reminder_datetime = datetime.datetime.now() + timedelta
+        if reminder_datetime < datetime.datetime.now():
+            return await interaction.response.send_message("Reminders cannot be set for the past.", ephemeral=True)
         reminder = await self.create_reminder(interaction, reminder_datetime, reminder_str)
 
         embed = RandomColorEmbed(title="Reminder")
