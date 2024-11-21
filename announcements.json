@@ -24,7 +24,8 @@
         "date": {
             "hour": 7,
             "minute": 0,
-            "second": 0
+            "second": 0,
+            "weekday": "Monday"
         },
         "filename": "good_morning_rika.jpg"
     },
