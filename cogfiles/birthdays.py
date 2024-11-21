@@ -1,10 +1,25 @@
 import datetime, zoneinfo
 from ioutils import read_json, write_json, RandomColorEmbed
-from dateutil.parser import parse
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
+from enum import Enum
+
+
+class Month(Enum):
+    January = 1
+    February = 2
+    March = 3
+    April = 4
+    May = 5
+    June = 6
+    July = 7
+    August = 8
+    September = 9
+    October = 10
+    November = 11
+    December = 12
 
 class Birthdays(commands.Cog, name="Birthdays"):
     "Send messages on members' birthdays."
@@ -26,29 +41,23 @@ class Birthdays(commands.Cog, name="Birthdays"):
 
         self.send_birthday_message.start()
 
-        synced = await self.bot.tree.sync()
-        print(f"Synced {len(synced)} command(s).")
-
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """Initializes the class on server join."""
         await self.on_ready()
 
     @app_commands.command()
-    @app_commands.rename(date_str="date")
-    async def birthday(self, interaction: discord.Interaction, date_str: str):
-        """Saves your birthday, given a month, day, and optional year.
-        On your birthday, JENOVA will send a happy birthday message."""
-        date = parse(date_str).date()
-        now = datetime.datetime.now(tz=zoneinfo.ZoneInfo("US/Eastern"))
-        if (date.year == now.year): # parse defaults to current year if no year is found. This means the user did not provide a year
-            date = datetime.date(year=datetime.MINYEAR, month=date.month, day=date.day) # Setting the year to MINYEAR represents no year provided
-        
+    async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 0, 31], year: int | None):
+        """Saves your birthday. On your birthday, JENOVA will send a happy birthday message."""
+        try:
+            date = datetime.date(year=datetime.MINYEAR if year is None else year, month=month.value, day=day) # Setting the year to MINYEAR represents no year provided
+        except ValueError:
+            return await interaction.response.send_message("Invalid date.", ephemeral=True)
         if self.birthdays[interaction.guild.id] is None:
             self.birthdays[interaction.guild.id] = {}
         self.birthdays[interaction.guild.id][interaction.user] = date
         write_json(interaction.guild.id, "birthdays", value={user.id: birthday.isoformat() for user, birthday in self.birthdays[interaction.guild.id].items()})
-        await interaction.response.send_message("Added your birthday", ephemeral=True)
+        await interaction.response.send_message(f"Added your birthday: {month.name} {ordinal(day)}{'' if year == None else f', {year}'}", ephemeral=True)
 
     @app_commands.command()
     async def birthdays(self, interaction: discord.Interaction):
