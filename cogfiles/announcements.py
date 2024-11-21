@@ -75,27 +75,27 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         await self.on_ready()
 
     @app_commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def announcementchannel(self, context: commands.Context, channel: discord.TextChannel):
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def announcementchannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         """Set which channel to send periodic announcement messages."""
-        write_json(context.guild.id, "periodic_announcement_channel_id", value=channel.id)
-        await context.send(f"Periodic announcement channel is set to {channel.mention}")
+        write_json(interaction.guild.id, "periodic_announcement_channel_id", value=channel.id)
+        await interaction.response.send_message(f"Periodic announcement channel is set to {channel.mention}", ephemeral=True)
 
-    @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def dailymessagechannel(self, context: commands.Context, channel: discord.TextChannel):
+    @app_commands.command()
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def dailymessagechannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         """Set which channel to send daily messages."""
-        write_json(context.guild.id, "daily_message_channel_id", value=channel.id)
-        await context.send(f"Daily message channel is set to {channel.mention}")
+        write_json(interaction.guild.id, "daily_message_channel_id", value=channel.id)
+        await interaction.response.send_message(f"Daily message channel is set to {channel.mention}", ephemeral=True)
 
     @announcementchannel.error
     @dailymessagechannel.error
-    async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
+    async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         """Handles errors for the given command (insufficient permissions, etc)."""
-        if isinstance(error, commands.errors.MissingPermissions):
-            await context.send("User needs Manage Server permission to use this command.")
+        if isinstance(error, app_commands.errors.MissingPermissions):
+            await interaction.response.send_message("You need the Manage Server permission to use this command.", ephemeral=True)
         elif isinstance(error, commands.errors.ChannelNotFound):
-            await context.send("Channel not found. Try again.")
+            await interaction.response.send_message("Channel not found. Try again.", ephemeral=True)
 
     def create_announcement_loop(self, config: AnnouncementConfig):
         """Creates a task loop that runs and sends a message at the times given by the config."""

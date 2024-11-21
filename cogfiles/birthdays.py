@@ -50,20 +50,20 @@ class Birthdays(commands.Cog, name="Birthdays"):
         write_json(interaction.guild.id, "birthdays", value={user.id: birthday.isoformat() for user, birthday in self.birthdays[interaction.guild.id].items()})
         await interaction.response.send_message("Added your birthday", ephemeral=True)
 
-    # @birthday.command()
-    # @commands.has_guild_permissions(manage_guild=True)
-    # async def channel(self, context: commands.Context, channel: discord.TextChannel):
-    #     """Set which channel to send event alert ping messages."""
-    #     write_json(context.guild.id, "birthday_channel_id", value=channel.id)
-    #     await context.message.add_reaction("👍")
+    @app_commands.command()
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def birthdaychannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        """Set which channel to send event alert ping messages."""
+        write_json(interaction.guild.id, "birthday_channel_id", value=channel.id)
+        await interaction.response.send_message(f"Birthday channel is set to {channel.mention}", ephemeral=True)
 
-    # @channel.error
-    # async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
-    #     """Handles errors for the given command (insufficient permissions, etc)."""
-    #     if isinstance(error, commands.errors.MissingPermissions):
-    #         await context.send("User needs Manage Server permission to use this command.")
-    #     elif isinstance(error, commands.errors.ChannelNotFound):
-    #         await context.send("Channel not found. Try again.")
+    @birthdaychannel.error
+    async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        """Handles errors for the given command (insufficient permissions, etc)."""
+        if isinstance(error, app_commands.errors.MissingPermissions):
+            await interaction.response.send_message("You need the Manage Server permission to use this command.", ephemeral=True)
+        elif isinstance(error, commands.errors.ChannelNotFound):
+            await interaction.response.send_message("Channel not found. Try again.", ephemeral=True)
 
     @app_commands.command()
     async def birthdays(self, interaction: discord.Interaction):
@@ -84,7 +84,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
             description += f"**{birthday_str}**\n{user.mention}\n\n"
 
         embed = RandomColorEmbed(title="Upcoming Birthdays", description=description)
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, second=0, tzinfo=zoneinfo.ZoneInfo("US/Eastern"))) # 12:00 AM EST
     async def send_birthday_message(self):

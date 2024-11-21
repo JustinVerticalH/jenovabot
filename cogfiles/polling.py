@@ -11,10 +11,10 @@ class Polling(commands.Cog, name="Polling"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @commands.command()
-    async def yesorno(self, interaction: discord.Interaction):
+    @app_commands.command()
+    async def yesorno(self, interaction: discord.Interaction, question: str):
         """Ask a yes or no question."""
-        await interaction.response.send_message("Yes or No?")
+        await interaction.response.send_message(f"> {question} \nYes or no?")
         poll_message = await interaction.original_response()
         await poll_message.add_reaction("✅")
         await poll_message.add_reaction("❌")

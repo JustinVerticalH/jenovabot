@@ -45,12 +45,13 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         await interaction.response.send_message(embed=game_data)
         
-    #@howlongtobeat.command()
-    #async def search(self, context: commands.Context, *, game_name: str):
+    #@app_commands.command()
+    #@app_commands.rename(game_name="search")
+    #async def howlongtobeatlist(self, interaction: discord.Interaction, game_name: str):
     #    """Search HowLongToBeat with the given game name and show at most the first 10 results."""
     #    game_list = await WebScrapers.hltb_search(game_name)
     #    if game_list is None:
-    #        await context.send("Could not find a game with that title.")
+    #        await interaction.response.send_message("Could not find a game with that title.", ephemeral=True)
     #        return
         
     #    game_list_data = RandomColorEmbed(
@@ -59,7 +60,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
     #    )
     #    game_list_data.set_thumbnail(url="https://howlongtobeat.com/img/hltb_brand.png")
 
-    #    await context.send(embed=game_list_data)
+    #    await interaction.response.send_message(embed=game_list_data)
 
     @staticmethod
     async def hltb_search(game_name: str):
@@ -74,6 +75,8 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
     @app_commands.rename(song_name="search")
     async def heady(self, interaction: discord.Interaction, song_name: str):
         """Search HeadyVersion with the given song name."""
+        await interaction.response.defer()
+
         async with aiohttp.ClientSession() as session:
             # First, perform a GET request to get the CSRF token
             async with session.get("http://headyversion.com/search/") as response:
@@ -87,7 +90,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                     table = soup.find("table")
                     # If table is None, we know that no results were found
                     if table is None:
-                        return await interaction.response.send_message("Could not find a song with that title.", ephemeral=True)
+                        return await interaction.followup.send("Could not find a song with that title.")
                     # If the HTML has a table, then Heady is listing multiple song choices, and we choose the first one
                     else:
                         songs = table.find_all("div", class_="big_link")
@@ -117,7 +120,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         embed = RandomColorEmbed(title=title, url=response.url, description=description)
         embed.set_thumbnail(url="https://clipartspub.com/images/grateful-dead-clipart-template-5.png")
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command()
     async def anime(self, interaction: discord.Interaction, search: str):
@@ -152,8 +155,11 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
             async with session.post(url, json={"query": query, "variables": variables}) as response:
                 response_text = await response.text()
         response_json = json.loads(response_text)
-        response_url = response_json["data"]["Media"]["siteUrl"]
-        await interaction.response.send_message(response_url)
+        media = response_json["data"]["Media"]
+        if media is None:
+            await interaction.response.send_message("Could not find an anime/manga with that name.", ephemeral=True)
+        else:
+            await interaction.response.send_message(media["siteUrl"])
 
     @app_commands.command()
     @app_commands.rename(vn_name="search")
@@ -168,6 +174,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
             async with session.post("https://api.vndb.org/kana/vn", data=vn_request_data) as response:
                 results = (await response.json())["results"]
             
+        if not results:
+            return await interaction.response.send_message("Could not find a VN with that title.", ephemeral=True)
+
         vn, _ = process.extractOne(vn_name, results, processor=lambda vn: vn if vn == vn_name else vn["title"])
 
         vn["description"] = re.sub(r"\[url=(.*)\](.*)\[\/url\]", r"[\2](\1)", vn["description"])
@@ -254,7 +263,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         search_result = content["findItemsByKeywordsResponse"][0]["searchResult"][0]
         if search_result["@count"] == "0":
-            return await interaction.response.send_message("Could not find any search results.")
+            return await interaction.response.send_message("Could not find any search results.", ephemeral=True)
 
         url = content["findItemsByKeywordsResponse"][0]["itemSearchURL"][0]
         embed = RandomColorEmbed(title="eBay", url=url)

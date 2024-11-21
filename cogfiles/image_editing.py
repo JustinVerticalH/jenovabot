@@ -24,14 +24,14 @@ class ImageEditing(commands.Cog, name="Image Editing"):
 
     @app_commands.command()
     @app_commands.rename(image_template="background")
-    async def kagetsutoya(self, interaction: discord.Interaction, text: str, image_template: ImageTemplate | None, ephemeral: bool=True):
+    async def kagetsutoya(self, interaction: discord.Interaction, text: str, image_template: ImageTemplate | None):
         """Generates an image in the style of the daily messages found in Kagetsu Tōya.
         Image templates: akiha, arcueid, ciel, hisui, kohaku, satsuki.
         By default, this command picks a random image to use as the background,
         but if the user runs this command using an image name instead, that image will be used as the background."""
         image_name = f"image_resources/{image_template.name}.png" if image_template is not None else None # An image name of None indicates a random template
         file = await ImageEditing.create_kagetsu_toya_file(image_name, text)
-        await interaction.response.send_message(file=file, ephemeral=ephemeral)
+        await interaction.response.send_message(file=file, ephemeral=True)
 
     @staticmethod
     async def create_kagetsu_toya_file(template_path: str | None, text: str):

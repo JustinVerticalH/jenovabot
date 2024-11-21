@@ -1,5 +1,6 @@
 from ioutils import read_json, write_json
 import discord, datetime
+from discord import app_commands
 from discord.ext import commands, tasks
 from discord.utils import format_dt
 
@@ -110,12 +111,12 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             self.wait_until_announcement_tasks[event].cancel()
             del self.wait_until_announcement_tasks[event]
 
-    @commands.command()
-    @commands.has_guild_permissions(manage_guild=True)
-    async def alertchannel(self, context: commands.Context, channel: discord.TextChannel | discord.ForumChannel):
+    @app_commands.command()
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def alertchannel(self, interaction: discord.Interaction, channel: discord.TextChannel | discord.ForumChannel):
         """Set which channel to send event alert ping messages."""
-        write_json(context.guild.id, "scheduled_event_alert_channel_id", value=channel.id)
-        await context.send(f"Event alert channel is set to {channel.mention}")
+        write_json(interaction.guild.id, "scheduled_event_alert_channel_id", value=channel.id)
+        await interaction.response.send_message(f"Event alert channel is set to {channel.mention}", ephemeral=True)
     
     @alertchannel.error
     async def permissions_or_channel_fail(self, context: commands.Context, error: commands.errors.CommandError):
