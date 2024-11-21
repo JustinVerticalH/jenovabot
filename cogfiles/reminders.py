@@ -52,14 +52,14 @@ class Reminder:
         """Convert a JSON dictionary to a Reminder object."""
         channel = bot.get_channel(json_obj["channel_id"])
         
-        if channel is not None:
+        if channel is not None: # This means the channel has been deleted or archived
             command_message = None if json_obj["command_message_id"] < 0 else await channel.fetch_message(json_obj["command_message_id"])
-            original_message_datetime = None if json_obj["original_message_timestamp"] < 0 else datetime.datetime.fromtimestamp(json_obj["original_message_timestamp"])
+            original_message_datetime = datetime.datetime.fromtimestamp(json_obj["original_message_timestamp"]) if command_message is None else command_message.created_at
             reminder_datetime = datetime.datetime.fromtimestamp(json_obj["reminder_timestamp"])
             reminder_str = json_obj["reminder_str"]
             author = await bot.fetch_user(json_obj["author_id"]) if command_message is None else command_message.author
             channel = await bot.fetch_channel(json_obj["channel_id"]) if command_message is None else command_message.channel
-            subscribers = [] if json_obj["subscriber_ids"] is None else [await bot.fetch_user(subscriber_id) for subscriber_id in json_obj["subscriber_ids"]]
+            subscribers = [await bot.fetch_user(subscriber_id) for subscriber_id in json_obj["subscriber_ids"]] if command_message is None else []
 
             return Reminder(author, channel, command_message, original_message_datetime, reminder_datetime, reminder_str, subscribers)
     
@@ -142,7 +142,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
     @app_commands.command()
     @app_commands.rename(reminder_str="message")
-    async def remindme(self, interaction: discord.Interaction, reminder_str: str, days: int=0, hours: int=0, minutes: int=0, seconds: int=0):
+    async def testremindme(self, interaction: discord.Interaction, reminder_str: str, days: int=0, hours: int=0, minutes: int=0, seconds: int=0):
         """Set a scheduled reminder. JENOVA will ping you once the time has passed."""
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
