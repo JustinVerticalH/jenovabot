@@ -32,6 +32,12 @@ class Admin(commands.Cog, name="Administrator"):
         synced = await self.bot.tree.sync()
         print(f"Synced {len(synced)} command(s).")
     
+    @commands.Cog.listener()
+    async def on_command_error(self, context: commands.Context, error: commands.CommandError):
+        "Inform the user of slash commands if attempting to use an old-style command."
+        if isinstance(error, commands.CommandNotFound) and self.bot.tree.get_command(context.invoked_with) is not None:
+            await context.send(f"Looks like you just tried to use the `{context.invoked_with}` command.\nJENOVA has moved over to slash commands — be sure to type `/{context.invoked_with}` instead.")
+    
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_guild=True)
     async def channel(self, interaction: discord.Interaction, channel_type: ChannelType, channel: discord.TextChannel | discord.ForumChannel):
