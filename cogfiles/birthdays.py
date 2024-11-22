@@ -47,7 +47,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await self.on_ready()
 
     @app_commands.command()
-    async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 0, 31], year: int | None):
+    async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 1, 31], year: int | None):
         """Saves your birthday. On your birthday, JENOVA will send a happy birthday message."""
         try:
             date = datetime.date(year=datetime.MINYEAR if year is None else year, month=month.value, day=day) # Setting the year to MINYEAR represents no year provided
