@@ -74,7 +74,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         description = ""
         n = min(10, len(sorted_birthdays.values()))
         for user, birthday in list(sorted_birthdays.items())[:n]:
-            birthday_str = f"{birthday.strftime('%B')} {ordinal(int(birthday.strftime('%d')))}, {birthday.strftime('%Y')}"
+            birthday_str = f"{Month(birthday.month).name} {ordinal(birthday.day)}, {birthday.year}"
             description += f"**{birthday_str}**\n{user.mention}\n\n"
 
         embed = RandomColorEmbed(title="Upcoming Birthdays", description=description)
