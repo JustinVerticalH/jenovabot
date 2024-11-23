@@ -49,9 +49,9 @@ class Admin(commands.Cog, name="Administrator"):
         try:
             synced = await self.bot.tree.sync()
         except discord.DiscordException as error:
-            interaction.response.send_message(f"Failed to sync command(s): {error}", ephemeral=True)
+            await interaction.response.send_message(f"Failed to sync command(s): {error}", ephemeral=True)
         else:
-            interaction.response.send_message(f"Synced {len(synced)} command(s).", ephemeral=True)
+            await interaction.response.send_message(f"Synced {len(synced)} command(s).", ephemeral=True)
     
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_guild=True)
