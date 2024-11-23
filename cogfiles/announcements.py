@@ -68,6 +68,7 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
         for config in configs:
             if config.message is not None or config.filename is not None:
                 self.create_announcement_loop(config).start()
+        self.daily_message.start()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
@@ -103,5 +104,5 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                     headers = json.load(file)            
                 message = random.choice(list(headers.keys()))
                 item = random.choice(headers[message])
-                file = await ImageEditing.create_kagetsu_toya_file(channel, None, message+item)
+                file: discord.File = await ImageEditing.create_kagetsu_toya_file(None, message+item)
                 await channel.send(file=file)

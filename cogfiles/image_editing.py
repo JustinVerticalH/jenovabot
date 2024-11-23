@@ -34,7 +34,7 @@ class ImageEditing(commands.Cog, name="Image Editing"):
         await interaction.response.send_message(file=file, ephemeral=True)
 
     @staticmethod
-    async def create_kagetsu_toya_file(template_path: str | None, text: str):
+    async def create_kagetsu_toya_file(template_path: str | None, text: str) -> discord.File:
         """Add text to the provided image template and send the image. 
         This function uses the Sazanami Gothic font."""
         if template_path is None:
