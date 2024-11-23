@@ -68,15 +68,14 @@ class Reminder:
         # This ensures that when the list of subscribers in one Reminder is modified, copies of that Reminder are not also modified (such as Reminders._cached_reminders)
         return Reminder(self.author, self.channel, self.command_message, self.original_message_datetime, self.reminder_datetime, self.reminder_str, self.subscribers.copy())
 
-class ReminderSubscribeButton(discord.ui.Button):
+class ReminderSubscribeView(discord.ui.View):
 
     def __init__(self, reminder: Reminder):
         super().__init__()
         self.reminder = reminder
-        self.emoji = "👍"
-        self.label = "I want to be reminded too!"
 
-    async def callback(self, interaction: discord.Interaction):
+    @discord.ui.button(label="I want to be reminded too!", emoji="👍")
+    async def subscribe_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user == self.reminder.author or interaction.user in self.reminder.subscribers:
             return await interaction.response.send_message("You are already set to be notified of this reminder.", ephemeral=True) #TODO: Make this a toggleable button
         self.reminder.subscribers.append(interaction.user)
@@ -153,8 +152,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
         embed = RandomColorEmbed(title="Reminder")
         embed.description = f"You set a reminder for {format_dt(reminder_datetime, style='f')}:\n{reminder_str}"
-        view = discord.ui.View()
-        view.add_item(ReminderSubscribeButton(reminder))
+        view = ReminderSubscribeView(reminder)
         await interaction.response.send_message(embed=embed, view=view)
 
     async def create_reminder(self, interaction: discord.Interaction, time: datetime.datetime, reminder_str: str):

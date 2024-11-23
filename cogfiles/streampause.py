@@ -37,12 +37,8 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         embed = RandomColorEmbed(
             title = "Click the button when you're all set!"
         )
-        view = discord.ui.View()
-        view.add_item(ReturnButton(self))
-        view.add_item(UnReturnButton(self))
-        view.add_item(CancelButton(self))
-        view.add_item(ExplanationButton())
-        await interaction.response.send_message(embed=embed, view=view)
+
+        await interaction.response.send_message(embed=embed, view=StreamPauseView(self))
 
         message = await interaction.original_response()
         self.streampause_data = {
@@ -98,14 +94,14 @@ class StreamPause(commands.Cog, name="Stream Pause"):
     def get_non_bot_users(voice_channel: discord.VoiceChannel) -> set[discord.Member]:
         return set(member for member in voice_channel.members if not member.bot)
 
-class ReturnButton(discord.ui.Button):
+class StreamPauseView(discord.ui.View):
+
     def __init__(self, streampause: StreamPause):
         super().__init__()
         self.streampause = streampause
-        self.emoji = "👍"
-        self.label = "I'm back!"
 
-    async def callback(self, interaction: discord.Interaction):
+    @discord.ui.button(label="I'm back!", emoji="👍")
+    async def return_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user not in self.streampause.streampause_data["reacted_users"]:
             self.streampause.streampause_data["reacted_users"].add(interaction.user)
             await self.streampause.attempt_to_finish_streampause(interaction.user, interaction.user.voice.channel)
@@ -113,14 +109,8 @@ class ReturnButton(discord.ui.Button):
         else:
             await interaction.response.defer()
 
-class UnReturnButton(discord.ui.Button):
-    def __init__(self, streampause: StreamPause):
-        super().__init__()
-        self.streampause = streampause
-        self.emoji = "👎"
-        self.label = "I'm not back!"
-
-    async def callback(self, interaction: discord.Interaction):
+    @discord.ui.button(label="I'm not back!", emoji="👎")
+    async def unreturn_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user in self.streampause.streampause_data["reacted_users"]:
             self.streampause.streampause_data["reacted_users"].discard(interaction.user)
             await self.streampause.attempt_to_finish_streampause(interaction.user, interaction.user.voice.channel)
@@ -128,14 +118,8 @@ class UnReturnButton(discord.ui.Button):
         else:
             await interaction.response.defer()
 
-class CancelButton(discord.ui.Button):
-    def __init__(self, streampause: StreamPause):
-        super().__init__()
-        self.label = "Cancel"
-        self.streampause = streampause
-        self.style = discord.ButtonStyle.red
-
-    async def callback(self, interaction: discord.Interaction):
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user == self.streampause.streampause_data["author"]:
             await self.streampause.streampause_data["message"].delete()
             self.streampause.streampause_data = None
@@ -143,12 +127,8 @@ class CancelButton(discord.ui.Button):
         else:
             await interaction.response.defer()
 
-class ExplanationButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__()
-        self.label = "What is this?"
-    
-    async def callback(self, interaction: discord.Interaction):
+    @discord.ui.button(label="What is this?")
+    async def explanation_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("This command is for when we want to take a break during a stream. " +
                                                 "Take an AFK break, and when you come back, click the 👍 button. " +
                                                 "When everyone has come back and clicked, the message will delete itself " +
