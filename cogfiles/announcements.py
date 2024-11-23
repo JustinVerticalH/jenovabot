@@ -104,5 +104,5 @@ class Announcements(commands.Cog, name="Periodic Announcements"):
                     headers = json.load(file)            
                 message = random.choice(list(headers.keys()))
                 item = random.choice(headers[message])
-                file: discord.File = await ImageEditing.create_kagetsu_toya_file(None, message+item)
+                file = await ImageEditing.create_kagetsu_toya_file(None, message+item)
                 await channel.send(file=file)
