@@ -9,9 +9,9 @@ from ioutils import read_json, write_json
 class ReactionRole:
     """Data associated with a reaction role."""
     channel: discord.TextChannel = field(compare=False)
-    message: discord.Message = field(compare=False)
-    role: discord.Role = field(compare=False)
-    emoji: str = field(compare=False)
+    message: discord.Message = field()
+    role: discord.Role = field()
+    emoji: str = field()
 
     def to_json(self) -> dict[str, int | str]:
         """Convert the current reminder object to a JSON string."""
@@ -69,27 +69,32 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         write_json(interaction.guild.id, "reaction_roles", value=[reactionrole.to_json() for reactionrole in self.reactionroles[interaction.guild.id]])
     
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction: discord.Reaction, user: discord.Member):
-        if user.bot or all(reactionrole.message != reaction.message for reactionrole in self.reactionroles[reaction.message.guild.id]):
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        guild = self.bot.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        if member.bot or all(reactionrole.message.id != payload.message_id for reactionrole in self.reactionroles[payload.guild_id]):
             return
         
-        role = next(reactionrole.role for reactionrole in self.reactionroles[reaction.message.guild.id] if reactionrole.emoji == reaction.emoji)
+        role = next(reactionrole.role for reactionrole in self.reactionroles[payload.guild_id] if reactionrole.emoji == str(payload.emoji))
 
-        await user.add_roles(role)
+        await member.add_roles(role)
 
-        if user.dm_channel is None:
-            await user.create_dm()
-        await user.dm_channel.send(f"You now have the {role.name} role.")
+        if member.dm_channel is None:
+            await member.create_dm()
+        await member.dm_channel.send(f"You now have the {role.name} role in {guild.name}.")
     
     @commands.Cog.listener()
-    async def on_reaction_remove(self, reaction: discord.Reaction, user: discord.Member):
-        if user.bot or all(reactionrole.message != reaction.message for reactionrole in self.reactionroles[reaction.message.guild.id]):
+    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        guild = self.bot.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        if member.bot or all(reactionrole.message.id != payload.message_id for reactionrole in self.reactionroles[payload.guild_id]):
             return
         
-        role = next(reactionrole.role for reactionrole in self.reactionroles[reaction.message.guild.id] if reactionrole.emoji == reaction.emoji)
-        
-        await user.remove_roles(role)
-        
-        if user.dm_channel is None:
-            await user.create_dm()
-        await user.dm_channel.send(f"You no longer have the {role.name} role.")
+        role = next(reactionrole.role for reactionrole in self.reactionroles[payload.guild_id] if reactionrole.emoji == str(payload.emoji))
+
+        await member.remove_roles(role)
+
+        if member.dm_channel is None:
+            await member.create_dm()
+        await member.dm_channel.send(f"You no longer have the {role.name} role in {guild.name}.")
+    
