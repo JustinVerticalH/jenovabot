@@ -29,10 +29,9 @@ class ReactionRole:
         
         if channel is not None:
             message = await channel.fetch_message(json_obj["message_id"])
-            role = next(role for role in await channel.guild.fetch_roles() if role.id == int(json_obj["role_id"]))
+            role = channel.guild.get_role(json_obj["role_id"])
             emoji = json_obj["emoji"]
             return ReactionRole(channel, message, role, emoji)
-
 
 class ReactionRoles(commands.Cog, name="Reaction Roles"):
     """Manage ping roles through message reactions."""
@@ -70,6 +69,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        """Called when a message has a reaction added. 
+        This is called regardless of the state of the internal message cache, for example with old messages."""
         guild = self.bot.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
         if member.bot or all(reactionrole.message.id != payload.message_id for reactionrole in self.reactionroles[payload.guild_id]):
@@ -85,6 +86,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        """Called when a message has a reaction removed. 
+        This is called regardless of the state of the internal message cache, for example with old messages."""
         guild = self.bot.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
         if member.bot or all(reactionrole.message.id != payload.message_id for reactionrole in self.reactionroles[payload.guild_id]):
@@ -97,4 +100,3 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         if member.dm_channel is None:
             await member.create_dm()
         await member.dm_channel.send(f"You no longer have the {role.name} role in {guild.name}.")
-    
