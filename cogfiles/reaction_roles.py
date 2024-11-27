@@ -69,7 +69,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         reactionrole = ReactionRole(channel, message, role, emoji)
 
         # If there already exists a reaction role for this role, remove it and replace it with the new one
-        old_reactionrole = next(rr for rr in self.reactionroles[interaction.guild.id] if rr.role == reactionrole.role)
+        old_reactionrole = next((rr for rr in self.reactionroles[interaction.guild.id] if rr.role == reactionrole.role), None)
         self.reactionroles[interaction.guild.id].discard(old_reactionrole)
         self.reactionroles[interaction.guild.id].add(reactionrole)
         write_json(interaction.guild.id, "reaction_roles", value=[reactionrole.to_json() for reactionrole in self.reactionroles[interaction.guild.id]])
@@ -113,4 +113,4 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         member = guild.get_member(payload.user_id)
         if member.bot or all(reactionrole.message.id != payload.message_id for reactionrole in self.reactionroles[payload.guild_id]):
             return None
-        return next(reactionrole.role for reactionrole in self.reactionroles[payload.guild_id] if reactionrole.emoji == payload.emoji)
+        return next((reactionrole.role for reactionrole in self.reactionroles[payload.guild_id] if reactionrole.emoji == payload.emoji), None)
