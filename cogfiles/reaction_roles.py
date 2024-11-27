@@ -49,7 +49,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     @app_commands.rename(emoji_str="emoji")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def reactionrole(self, interaction: discord.Interaction, role: discord.Role, emoji_str: str, message_link: str):
-        "Set up a reaction role message."
+        "Attaches a reaction role to a message. When a user reacts to the message with the given emoji, they will receive the role."
         emoji = discord.PartialEmoji.from_str(emoji_str)
 
         regex_searches = re.search("(\d+)\/(\d+)$", message_link)
@@ -73,9 +73,26 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         self.reactionroles[interaction.guild.id].discard(old_reactionrole)
         self.reactionroles[interaction.guild.id].add(reactionrole)
         write_json(interaction.guild.id, "reaction_roles", value=[reactionrole.to_json() for reactionrole in self.reactionroles[interaction.guild.id]])
+
         embed = RandomColorEmbed(title="Reaction Role", description=f"React to this message with {emoji} to get the {role.mention} role: {message.jump_url}")
         if old_reactionrole is not None:
             embed.description += f"\nThis command replaced an existing reaction role for {role.mention} at {old_reactionrole.message.jump_url}"
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command()
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def reactionroleremove(self, interaction: discord.Interaction, role: discord.Role):
+        "Removes a reaction role message."
+        # If there already exists a reaction role for this role, remove it and replace it with the new one
+        reactionrole = next((rr for rr in self.reactionroles[interaction.guild.id] if rr.role == role), None)
+        if reactionrole is None:
+            return await interaction.response.send_message("Could not find a reaction role for that role.", ephemeral=True)
+        
+        await reactionrole.message.remove_reaction(reactionrole.emoji, self.bot.user)
+        self.reactionroles[interaction.guild.id].discard(reactionrole)
+        write_json(interaction.guild.id, "reaction_roles", value=[reactionrole.to_json() for reactionrole in self.reactionroles[interaction.guild.id]])
+
+        embed = RandomColorEmbed(title="Reaction Role Removed", description=f"\nThe reaction role for {role.mention} at {reactionrole.message.jump_url} has been removed.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
     @commands.Cog.listener()
@@ -85,6 +102,9 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         guild = self.bot.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
         role = self.get_role(payload)
+
+        if role is None:
+            return
 
         await member.add_roles(role)
 
@@ -99,6 +119,9 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         guild = self.bot.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
         role = self.get_role(payload)
+
+        if role is None:
+            return
 
         await member.remove_roles(role)
 
