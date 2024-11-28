@@ -94,6 +94,13 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         embed = RandomColorEmbed(title="Reaction Role Removed", description=f"\nThe reaction role for {role.mention} at {old_reactionrole.message.jump_url} has been removed.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
+    @reactionrole.error
+    @reactionroleremove.error
+    async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        """Handles errors for the given command (insufficient permissions, etc)."""
+        if isinstance(error, app_commands.errors.MissingPermissions):
+            await interaction.response.send_message("You need the Manage Server permission to use this command.", ephemeral=True)
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         """Called when a message has a reaction added. 
