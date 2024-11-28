@@ -83,7 +83,6 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     @app_commands.checks.has_permissions(manage_guild=True)
     async def reactionroleremove(self, interaction: discord.Interaction, role: discord.Role):
         "Removes a reaction role message."
-        # If there already exists a reaction role for this role, remove it and replace it with the new one
         reactionrole = next((rr for rr in self.reactionroles[interaction.guild.id] if rr.role == role), None)
         if reactionrole is None:
             return await interaction.response.send_message("Could not find a reaction role for that role.", ephemeral=True)
