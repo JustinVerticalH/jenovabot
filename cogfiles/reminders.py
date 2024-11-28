@@ -1,6 +1,6 @@
-import datetime, json, re
+import datetime
 from dataclasses import dataclass, field
-from ioutils import RandomColorEmbed, read_json, write_json
+from ioutils import JsonSerializable, RandomColorEmbed, write_json, initialize_from_json
 
 import discord
 from discord import app_commands
@@ -9,7 +9,7 @@ from discord.utils import format_dt
 
 
 @dataclass(frozen=True, order=True)
-class Reminder:
+class Reminder(JsonSerializable):
     """Data associated with a scheduled reminder."""
     author: discord.User = field(compare=False)
     channel: discord.TextChannel | discord.ForumChannel = field(compare=False)
@@ -122,15 +122,9 @@ class Reminders(commands.Cog, name="Reminders"):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize the reminders instance dictionary from JSON data and start the reminder processing loop."""
+        await initialize_from_json(self.bot, self.reminders, Reminder, "reminders")
         for guild in self.bot.guilds:
-            if read_json(guild.id, "reminders") is None:
-                write_json(guild.id, "reminders", value={})
-            try:
-                self.reminders[guild.id] = {await Reminder.from_json(self.bot, json_str) for json_str in read_json(guild.id, "reminders")}
-            except json.JSONDecodeError as e:
-                print()
             self._cached_reminders[guild.id] = deepcopy(self.reminders[guild.id])
-        
         self.send_reminders.start()
         self.sync_json.start()
 
