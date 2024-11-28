@@ -25,7 +25,7 @@ class Month(Enum):
 @dataclass(frozen=True, order=True)
 class Birthday(JsonSerializable):
     user: discord.Member
-    date: datetime.date = field(compare=False)
+    date: datetime.date
 
     def to_json(self) -> dict[str, int | str]:
         """Convert the current ReactionRole object to a JSON string."""
@@ -86,8 +86,9 @@ class Birthdays(commands.Cog, name="Birthdays"):
         # This gives a list of upcoming birthdays in sorted order, including some dates from next year after this year
         now = datetime.datetime.now().date()
         next_birthdays = {Birthday(birthday.user, birthday.date.replace(year=now.year)) for birthday in self.birthdays[interaction.guild.id]}        
-        sorted_birthdays = sorted(next_birthdays, key=lambda birthday: birthday.date)
-        sorted_birthdays = {birthday for birthday in sorted_birthdays if now < birthday.date} | {Birthday(birthday.user, birthday.date.replace(year=now.year+1)) for birthday in sorted_birthdays if now >= birthday.date}
+        this_year_birthdays = {birthday for birthday in next_birthdays if now < birthday.date}
+        next_year_birthdays = {Birthday(birthday.user, birthday.date.replace(year=birthday.date.year+1)) for birthday in next_birthdays if now >= birthday.date}
+        sorted_birthdays = sorted(this_year_birthdays | next_year_birthdays, key=lambda birthday: birthday.date)
 
         description = ""
         n = min(10, len(sorted_birthdays))
