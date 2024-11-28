@@ -86,7 +86,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         # This gives a list of upcoming birthdays in sorted order, including some dates from next year after this year
         now = datetime.datetime.now().date()
         next_birthdays = {Birthday(birthday.user, birthday.date.replace(year=now.year)) for birthday in self.birthdays[interaction.guild.id]}        
-        sorted_birthdays = sorted(next_birthdays, key=lambda birthday: birthday)
+        sorted_birthdays = sorted(next_birthdays, key=lambda birthday: birthday.date)
         sorted_birthdays = {birthday for birthday in sorted_birthdays if now < birthday.date} | {Birthday(birthday.user, birthday.date.replace(year=now.year+1)) for birthday in sorted_birthdays if now >= birthday.date}
 
         description = ""
