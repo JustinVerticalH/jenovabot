@@ -31,7 +31,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
     @app_commands.command()
     @app_commands.rename(game_name="search")
     async def howlongtobeat(self, interaction: discord.Interaction, game_name: str):
-        """Search HowLongToBeat with the given game name and show completion time info."""
+        """Search HowLongToBeat (HLTB) with the given game name and show completion time info."""
         
         game_list = await WebScrapers.hltb_search(game_name)
         if game_list is None:
@@ -191,7 +191,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
     @app_commands.command()
     async def isthereanydeal(self, interaction: discord.Interaction, search: str):
-        """Search IsThereAnyDeal for a game matching the provided search.
+        """Search IsThereAnyDeal (ITAD) for a game matching the provided search.
         This command retrives the first 5 results of a search on ITAD. 
         For each result, prints the name of the game, the sale percent and new price, and the store with that price."""
         async with aiohttp.ClientSession() as session:
@@ -262,7 +262,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
             return await interaction.response.send_message("Could not find any search results.", ephemeral=True)
 
         url = content["findItemsByKeywordsResponse"][0]["itemSearchURL"][0]
-        embed = RandomColorEmbed(title="eBay", url=url)
+        embed = RandomColorEmbed(title=f"eBay: {search}", url=url)
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/EBay_logo.png/800px-EBay_logo.png")
 
         description = ""
