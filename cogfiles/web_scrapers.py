@@ -13,7 +13,6 @@ from enum import Enum
 
 
 ITAD_API_KEY = os.getenv("ITAD_API_KEY")
-STEAMGRIDDB_API_KEY = os.getenv("STEAMGRIDDB_API_KEY")
 EBAY_APP_NAME = os.getenv("EBAY_APP_NAME")
 
 
