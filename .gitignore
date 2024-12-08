@@ -2,5 +2,4 @@
 .venv
 .vscode
 __pycache__
-data/data.json
-data/test_data.json
+data/*
