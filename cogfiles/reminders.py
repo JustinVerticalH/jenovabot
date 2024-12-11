@@ -71,9 +71,9 @@ class Reminder(JsonSerializable):
 
 class ReminderSubscribeView(discord.ui.View):
 
-    def __init__(self):
+    def __init__(self, reminder):
         super().__init__(timeout=None)
-        self.reminder: Reminder | None # This will be None after the reminder has been sent
+        self.reminder: Reminder | None = reminder # This will be None after the reminder has been sent
 
     @discord.ui.button(label="I want to be reminded too!", emoji="👍", custom_id="reminder_subscribe_button")
     async def subscribe_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -135,8 +135,7 @@ class Reminders(commands.Cog, name="Reminders"):
             for reminder in self.reminders[guild.id]:
                 if reminder.slash_message is not None:
                     # This makes the views on existing reminders persistent between application restarts
-                    view = ReminderSubscribeView()
-                    view.reminder = reminder
+                    view = ReminderSubscribeView(reminder)
                     self.bot.add_view(view=view, message_id=reminder.slash_message.id)
         self.send_reminders.start()
         self.sync_json.start()
@@ -158,7 +157,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
         embed = RandomColorEmbed(title="Reminder")
         embed.description = f"You set a reminder for {format_dt(reminder_datetime, style='f')}:\n\"{reminder_str}\""
-        view = ReminderSubscribeView()
+        view = ReminderSubscribeView(None)
         await interaction.response.send_message(embed=embed, view=view)
         reminder = await self.create_reminder(interaction, reminder_datetime, reminder_str)
         view.reminder = reminder
@@ -218,8 +217,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
                     # Remove the reminder from memory
                     self.reminders[guild.id].remove(reminder)
-                    view = ReminderSubscribeView()
-                    view.reminder = None
+                    view = ReminderSubscribeView(None)
                     self.bot.add_view(view=view, message_id=reminder.slash_message.id)
     
     @tasks.loop(seconds=0.3)
