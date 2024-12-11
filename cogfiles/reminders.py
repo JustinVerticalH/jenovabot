@@ -161,6 +161,7 @@ class Reminders(commands.Cog, name="Reminders"):
         await interaction.response.send_message(embed=embed, view=view)
         reminder = await self.create_reminder(interaction, reminder_datetime, reminder_str)
         view.reminder = reminder
+        self.bot.add_view(view=view, message_id=reminder.slash_message.id)
 
     async def create_reminder(self, interaction: discord.Interaction, time: datetime.datetime, reminder_str: str):
         "Creates a new reminder and adds it to the list of reminders."
