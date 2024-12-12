@@ -1,4 +1,6 @@
-import discord, re
+import discord
+import re
+
 from dataclasses import dataclass, field
 from discord import app_commands
 from discord.ext import commands
@@ -111,6 +113,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
 
         if role is None:
             return
+        if member.bot:
+            return
 
         await member.add_roles(role)
 
@@ -127,6 +131,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         role = self.get_role(payload)
 
         if role is None:
+            return
+        if member.bot:
             return
 
         await member.remove_roles(role)
