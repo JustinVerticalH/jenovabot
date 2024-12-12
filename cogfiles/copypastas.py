@@ -4,7 +4,6 @@ import json
 from discord import app_commands
 from discord.ext import commands
 from ioutils import read_json, write_json
-from typing import Literal
 
 
 class Copypastas(commands.Cog, name="Message Copypastas"):
@@ -35,12 +34,11 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
 
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def copypastamode(self, interaction: discord.Interaction, mode: Literal["On", "Off"]):
+    async def copypastamode(self, interaction: discord.Interaction, toggle: bool):
         """Enable or disable whether the bot will send a copypasta when a message contains a certain phrase."""
-        is_copypasta_enabled = (mode == "On")
-        self.is_copypasta_enabled[interaction.guild.id] = is_copypasta_enabled
-        write_json(interaction.guild.id, "copypasta", value=is_copypasta_enabled)
-        await interaction.response.send_message(f"Copypastas in this server are now {mode.lower()}.", ephemeral=True)
+        self.is_copypasta_enabled[interaction.guild.id] = toggle
+        write_json(interaction.guild.id, "copypasta", value=toggle)
+        await interaction.response.send_message(f"Copypastas in this server are now {"on" if toggle else "off"}.", ephemeral=True)
 
     @copypastamode.error
     async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
