@@ -34,13 +34,13 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
 
     @app_commands.command()
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def copypastamode(self, interaction: discord.Interaction, toggle: bool):
-        """Enable or disable whether the bot will send a copypasta when a message contains a certain phrase."""
+    async def togglecopypastas(self, interaction: discord.Interaction, toggle: bool):
+        """Toggle whether the bot will send a copypasta when a message contains a certain phrase."""
         self.is_copypasta_enabled[interaction.guild.id] = toggle
         write_json(interaction.guild.id, "copypasta", value=toggle)
         await interaction.response.send_message(f"Copypastas in this server are now {"on" if toggle else "off"}.", ephemeral=True)
 
-    @copypastamode.error
+    @togglecopypastas.error
     async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         """Handles errors for the given command (insufficient permissions, etc)."""
         if isinstance(error, app_commands.errors.MissingPermissions):
