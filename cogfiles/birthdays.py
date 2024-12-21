@@ -1,5 +1,6 @@
-import datetime, zoneinfo
-from dataclasses import dataclass, field
+import datetime
+import zoneinfo
+from dataclasses import dataclass
 from ioutils import  JsonSerializable, RandomColorEmbed, read_json, write_json, initialize_from_json
 
 import discord
@@ -75,7 +76,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         self.birthdays[interaction.guild.id].discard(old_birthday)
         self.birthdays[interaction.guild.id].add(birthday)
         write_json(interaction.guild.id, "birthdays", value=[birthday.to_json() for birthday in self.birthdays[interaction.guild.id]])
-        await interaction.response.send_message(f"Added your birthday: {month.name} {ordinal(day)}{'' if year == None else f', {year}'}", ephemeral=True)
+        await interaction.response.send_message(f"Added your birthday: {month.name} {ordinal(day)}{'' if year is None else f', {year}'}", ephemeral=True)
 
     @app_commands.command()
     async def birthdays(self, interaction: discord.Interaction):
