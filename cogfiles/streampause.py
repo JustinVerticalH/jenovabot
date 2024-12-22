@@ -38,9 +38,11 @@ class StreamPause(commands.Cog, name="Stream Pause"):
             title = "Click the button when you're all set!"
         )
 
-        await interaction.response.send_message(embed=embed, view=StreamPauseView(self))
-
+        view = StreamPauseView(self)
+        await interaction.response.send_message(embed=embed, view=view)
         message = await interaction.original_response()
+        await self.bot.add_view(view, message_id=message.id)
+
         self.streampause_data = {
             "message": message,
             "author": interaction.user,
