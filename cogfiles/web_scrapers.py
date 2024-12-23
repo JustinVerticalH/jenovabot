@@ -1,4 +1,9 @@
-import aiohttp, discord, json, os, re, textwrap
+import aiohttp
+import discord
+import json
+import os
+import re
+import textwrap
 
 from bs4 import BeautifulSoup
 from dateutil import parser
@@ -206,6 +211,8 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         if content is None:
             return await interaction.response.send_message("Could not find a game with that title.", ephemeral=True)
 
+        await interaction.response.defer()
+
         description = ""
 
         valid_games = 0
@@ -242,7 +249,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         embed = RandomColorEmbed(title="Is There Any Deal?", description=description)
         embed.set_thumbnail(url="https://i.imgur.com/kd2JUwX.png")
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command()
     async def ebay(self, interaction: discord.Interaction, search: str):
