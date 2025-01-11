@@ -214,7 +214,7 @@ class Reminders(commands.Cog, name="Reminders"):
                             if reaction.emoji == "👍":
                                 subscribers = [user async for user in reaction.users()]
                                 subscribers_mention = " ".join(user.mention for user in subscribers if user != self.bot.user and user != reminder.command_message.author)
-                    await message.reply(f"**Reminder** from {format_dt(reminder.original_message_datetime, 'R')}\n\"{reminder.reminder_str}\"\n{reminder.author.mention}{subscribers_mention}")
+                    await message.reply(f"**Reminder** from {format_dt(reminder.original_message_datetime, 'R')}\n\"{reminder.reminder_str}\"\n{reminder.author.mention} {subscribers_mention}")
 
                     # Remove the reminder from memory
                     self.reminders[guild.id].remove(reminder)
