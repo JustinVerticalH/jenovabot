@@ -1,6 +1,5 @@
-import os, types
-
 import discord
+import os
 import wavelink
 
 from datetime import timedelta
@@ -79,18 +78,11 @@ class Music(commands.Cog, name="Music"):
                 await self.cleanup(self.node.get_player(before.channel.guild))
 
     @app_commands.command()
-    async def play(self, interaction: discord.Interaction, query: str):
+    async def play(self, interaction: discord.Interaction, query: str, position: app_commands.Range[int, 1] | None):
         """Searches and plays a song from a given query."""
         
         if interaction.user.voice is None:
             return await interaction.response.send_message("You're not in a voice channel!", ephemeral=True)
-
-        # Get the player for this guild from cache.
-        player = self.node.get_player(interaction.guild.id)
-        if player is None:
-            player = wavelink.Player(client=self.bot, channel=interaction.user.voice.channel, nodes=[self.node])
-            player.autoplay = wavelink.AutoPlayMode.partial
-            await interaction.user.voice.channel.connect(cls=player, reconnect=True)
 
         # Remove leading and trailing <>. <> may be used to suppress embedding links in Discord.
         query = query.strip("<>")
@@ -101,7 +93,16 @@ class Music(commands.Cog, name="Music"):
         # Results could be None if Lavalink returns an invalid response (non-JSON/non-200 (OK)).
         # Alternatively, results.tracks could be an empty array if the query yielded no tracks.
         if not tracks:
-            return await interaction.response.send_message("Nothing found!")
+            return await interaction.response.send_message("Nothing found!", ephemeral=True)
+        
+        await interaction.response.defer()
+
+        # Get the player for this guild from cache.
+        player = self.node.get_player(interaction.guild.id)
+        if player is None:
+            player = wavelink.Player(client=self.bot, channel=interaction.user.voice.channel, nodes=[self.node])
+            player.autoplay = wavelink.AutoPlayMode.partial
+            await interaction.user.voice.channel.connect(cls=player, reconnect=True)
 
         embed = RandomColorEmbed()
         channel_info = {"channel_id": interaction.channel.id, "requester_id": interaction.user.id}
@@ -110,28 +111,44 @@ class Music(commands.Cog, name="Music"):
             # tracks is a playlist...            
 
             tracks.extras = channel_info
-            await player.queue.put_wait(tracks)
+
+            # Add each track in the playlist at the given position, or at the end of the queue if no position is given
+            if position is None:
+                await player.queue.put_wait(tracks)
+            elif position == 1:
+                player.queue.put_at(0, player.current)
+                for track in reversed(tracks):
+                    player.queue.put_at(0, track)
+                await player.skip()
+            else:
+                for track in reversed(tracks):
+                    player.queue.put_at(position-2, track)
 
             embed.title = "Playlist Queued"
             embed.description = await self.format_playlist(tracks, query)
 
             video_thumbnail = f"https://img.youtube.com/vi/{tracks.tracks[0].identifier}/hqdefault.jpg"
-            embed.set_thumbnail(url=video_thumbnail)
-
-            await interaction.response.send_message(embed=embed)
         else:
             track: wavelink.Playable = tracks[0]
             
             track.extras = channel_info
-            await player.queue.put_wait(track)
+            
+            # Add the track at the given position, or at the end of the queue if no position is given
+            if position is None:
+                await player.queue.put_wait(track)
+            elif position == 1:
+                player.queue.put_at(0, player.current)
+                player.queue.put_at(0, track)
+                await player.skip()
+            else:
+                player.queue.put_at(position-2, track)
 
             embed.title = "Track Queued"
             embed.description = await self.format_track(track)
 
-            video_thumbnail = f"https://img.youtube.com/vi/{track.identifier}/hqdefault.jpg"
-            embed.set_thumbnail(url=video_thumbnail)
-
-            await interaction.response.send_message(embed=embed)
+        video_thumbnail = f"https://img.youtube.com/vi/{tracks[0].identifier}/hqdefault.jpg"
+        embed.set_thumbnail(url=video_thumbnail)
+        await interaction.followup.send(embed=embed)
         
         if not player.playing:
             await player.play(player.queue.get(), paused=False)
