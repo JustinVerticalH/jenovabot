@@ -52,7 +52,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize the list of birthdays and sync application commands."""
-        await initialize_from_json(self.bot, self.birthdays, Birthday, "birthdays")
+        await initialize_from_json(self.bot, Birthday, self.birthdays, "birthdays")
 
         self.send_birthday_message.start()
 

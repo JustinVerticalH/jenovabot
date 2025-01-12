@@ -129,7 +129,7 @@ class Reminders(commands.Cog, name="Reminders"):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize the reminders instance dictionary from JSON data and start the reminder processing loop."""
-        await initialize_from_json(self.bot, self.reminders, Reminder, "reminders")
+        await initialize_from_json(self.bot, Reminder, self.reminders, "reminders")
         for guild in self.bot.guilds:
             self._cached_reminders[guild.id] = deepcopy(self.reminders[guild.id])
             for reminder in self.reminders[guild.id]:
