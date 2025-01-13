@@ -49,7 +49,7 @@ def write_json(*path: any, value: any):
         json.dump(file_json, file, indent=2)
         file.truncate()
 
-async def initialize_from_json(bot: commands.Bot, guild_settings: dict[int, set[JsonSerializable]], settings_class: JsonSerializable, key: str):
+async def initialize_from_json(bot: commands.Bot, settings_class: JsonSerializable, guild_settings: dict[int, set[JsonSerializable]], key: str):
     """Initializes a dictionary mapping guild ID to a set of JSON-serializable objects 
     by reading the JSON file and deserializing the objects."""
 
