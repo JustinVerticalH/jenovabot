@@ -219,6 +219,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         for i in range(len(content)):
             game_id = content[i]["id"]
             game_title = content[i]["title"]
+
+            game_slug = content[i]["slug"]
+            itad_url = f"https://isthereanydeal.com/game/{game_slug}"
             
             request_data = f"""{json.dumps([game_id])}"""
             api = f"https://api.isthereanydeal.com/games/prices/v3?key={ITAD_API_KEY}"
@@ -238,7 +241,7 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
                 store_name = game_deals["shop"]["name"]
                 game_url = game_deals["url"]
                     
-                description += f"**{game_title}**\n**${price_new}** ({price_cut}% Off)\n[{store_name}]({game_url})\n\n"
+                description += f"**[{game_title}]({itad_url})**\n**${price_new}** ({price_cut}% Off)\n[{store_name}]({game_url})\n\n"
 
                 valid_games += 1
                 if valid_games >= 5:
