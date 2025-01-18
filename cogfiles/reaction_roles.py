@@ -45,7 +45,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize the list of reaction roles in memory."""
-        await initialize_from_json(self.bot, ReactionRole, "reaction_roles", guild_settings=self.reactionroles)
+        await initialize_from_json(self.bot, ReactionRole, self.reactionroles, "reaction_roles")
     
     @app_commands.command()
     @app_commands.rename(emoji_str="emoji")
