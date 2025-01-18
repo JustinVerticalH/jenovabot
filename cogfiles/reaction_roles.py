@@ -45,7 +45,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     @commands.Cog.listener()
     async def on_ready(self):
         """Initialize the list of reaction roles in memory."""
-        await initialize_from_json(self.bot, ReactionRole, self.reactionroles, "reaction_roles")
+        await initialize_from_json(self.bot, ReactionRole, "reaction_roles", guild_settings=self.reactionroles)
     
     @app_commands.command()
     @app_commands.rename(emoji_str="emoji")
@@ -60,7 +60,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
             message_id = regex_searches.group(2)
             channel = await interaction.guild.fetch_channel(int(channel_id))
             message = await channel.fetch_message(int(message_id))
-        except:
+        except (discord.errors.HTTPException, AttributeError):
             return await interaction.response.send_message("Could not find the given message.", ephemeral=True)
 
         try:
