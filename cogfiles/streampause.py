@@ -28,7 +28,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
         """Set up a streampause message for voice channel members to react to."""
 
         if interaction.user.voice is None:
-            return await interaction.response.send_message("This command is only usable inside a voice channel.")
+            return await interaction.response.send_message("This command is only usable inside a voice channel.", ephemeral=True)
 
         if self.streampause_data is not None:
             await self.streampause_data["message"].delete()
