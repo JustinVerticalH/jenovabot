@@ -1,0 +1,17 @@
+app = 'jenovabot-lavalink'
+primary_region = 'iad'
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
+
+[experimental]
+  auto_rollback = true
+
+[build]
+
+[http_service]
+  internal_port = 2333
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
