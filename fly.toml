@@ -1,4 +1,5 @@
 app = "jenovabot"
+primary_region = 'iad'
 kill_signal = "SIGINT"
 kill_timeout = 5
 processes = []
