@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --dockerfile ./lavalink/Dockerfile --remote-only
+      - run: flyctl deploy ./lavalink/ --remote-only
   deploy-jenovabot:
       name: Deploy app
       runs-on: ubuntu-latest
