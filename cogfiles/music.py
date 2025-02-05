@@ -10,7 +10,7 @@ from ioutils import RandomColorEmbed
 
 # Lavalink server version must be at or above version 4.0.5
 # We can get Lavalink servers from https://lavalink.darrennathanael.com/NoSSL/lavalink-without-ssl/
-LAVALINK_HOST = f"{os.getenv('LAVALINK_HOST')}:{os.getenv('LAVALINK_PORT')}"
+LAVALINK_HOST = f"http://{os.getenv('LAVALINK_HOST')}:{os.getenv('LAVALINK_PORT')}"
 LAVALINK_PASS = os.getenv("LAVALINK_PASS")
 
 async def setup_hook(self):
