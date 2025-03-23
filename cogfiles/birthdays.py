@@ -65,7 +65,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
     async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 1, 31], year: int | None):
         """Saves your birthday. On your birthday, JENOVA will send a happy birthday message."""
         try:
-            date = datetime.date(year=datetime.MINYEAR if year is None else year, month=month.value, day=day) # Setting the year to MINYEAR represents no year provided
+            date = datetime.date(year=datetime.MAXYEAR if year is None else year, month=month.value, day=day) # Setting the year to MAXYEAR represents no year provided
         except ValueError:
             return await interaction.response.send_message("Invalid date.", ephemeral=True)
         if self.birthdays[interaction.guild.id] is None:
@@ -114,7 +114,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
                     # Send birthday message in the correct channel
                     channel = await self.bot.fetch_channel(channel_id)
                     
-                    if birthday.date.year == datetime.MINYEAR:
+                    if birthday.date.year == datetime.MAXYEAR:
                         await channel.send(f"Happy birthday {birthday.user.mention}!")
                     else:
                         age = now.year - birthday.date.year
