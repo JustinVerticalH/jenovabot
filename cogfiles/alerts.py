@@ -103,7 +103,7 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
             if isinstance(channel, discord.ForumChannel):
                 channel = EventAlerts.get_channel_from_role(channel, role)
             await channel.send(f"{event.name} is starting {format_dt(event.start_time, style='R')}! {role.mention}\n{event.url}")
-            self.yet_to_ping.remove(event)
+            self.yet_to_ping.discard(event)
     
     def cancel_wait_until_announcement_task(self, event: discord.ScheduledEvent):
         """Stop the task loop that would send an announcement for this event and clear the event from memory."""
