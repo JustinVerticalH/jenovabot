@@ -38,8 +38,10 @@ class StreamPause(commands.Cog, name="Stream Pause"):
             title = "Click the button when you're all set!"
         )
 
-        await interaction.response.send_message(embed=embed, view=StreamPauseView(self))
+        view = StreamPauseView(self)
+        await interaction.response.send_message(embed=embed, view=view)
         message = await interaction.original_response()
+        self.bot.add_view(view, message_id=message.id)
 
         self.streampause_data = {
             "message": message,
@@ -97,10 +99,10 @@ class StreamPause(commands.Cog, name="Stream Pause"):
 class StreamPauseView(discord.ui.View):
 
     def __init__(self, streampause: StreamPause):
-        super().__init__()
+        super().__init__(timeout=None)
         self.streampause = streampause
 
-    @discord.ui.button(label="I'm back!", emoji="👍")
+    @discord.ui.button(label="I'm back!", custom_id="I'm back!", emoji="👍", style=discord.ButtonStyle.blurple)
     async def return_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user not in self.streampause.streampause_data["reacted_users"]:
             self.streampause.streampause_data["reacted_users"].add(interaction.user)
@@ -109,7 +111,7 @@ class StreamPauseView(discord.ui.View):
         else:
             await interaction.response.defer()
 
-    @discord.ui.button(label="I'm not back!", emoji="👎")
+    @discord.ui.button(label="I'm not back!", custom_id="I'm not back!", emoji="👎", style=discord.ButtonStyle.blurple)
     async def unreturn_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user in self.streampause.streampause_data["reacted_users"]:
             self.streampause.streampause_data["reacted_users"].discard(interaction.user)
@@ -118,7 +120,7 @@ class StreamPauseView(discord.ui.View):
         else:
             await interaction.response.defer()
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Cancel", custom_id="Cancel", style=discord.ButtonStyle.red)
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user == self.streampause.streampause_data["author"]:
             await self.streampause.streampause_data["message"].delete()
@@ -127,7 +129,7 @@ class StreamPauseView(discord.ui.View):
         else:
             await interaction.response.defer()
 
-    @discord.ui.button(label="What is this?")
+    @discord.ui.button(label="What is this?", custom_id="What is this?")
     async def explanation_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("This command is for when we want to take a break during a stream. " +
                                                 "Take an AFK break, and when you come back, click the 👍 button. " +
