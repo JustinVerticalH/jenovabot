@@ -18,7 +18,12 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
     @commands.Cog.listener()
     async def on_ready(self):
         for guild in self.bot.guilds:
-            self.is_copypasta_enabled[guild.id] = read_json(guild.id, "copypasta")
+            self.is_copypasta_enabled[guild.id] = read_json(guild.id, "copypasta") or False
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: discord.Guild):
+        """Initialize copypasta settings when the bot joins a new server."""
+        await self.on_ready()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
