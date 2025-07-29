@@ -148,4 +148,4 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         member = guild.get_member(payload.user_id)
         if member.bot or all(reactionrole.message.id != payload.message_id for reactionrole in self.reactionroles[payload.guild_id]):
             return None
-        return next((reactionrole.role for reactionrole in self.reactionroles[payload.guild_id] if reactionrole.emoji == payload.emoji), None)
+        return next((reactionrole.role for reactionrole in self.reactionroles[payload.guild_id] if reactionrole.message.id == payload.message_id and reactionrole.emoji == payload.emoji), None)
