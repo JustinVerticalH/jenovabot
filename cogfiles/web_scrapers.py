@@ -3,7 +3,6 @@ import discord
 import json
 import os
 import re
-import textwrap
 
 from bs4 import BeautifulSoup
 from dateutil import parser
@@ -179,10 +178,15 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         vn, _ = process.extractOne(vn_name, results, processor=lambda vn: vn if vn == vn_name else vn["title"])
 
-        vn["description"] = re.sub(r"\[url=(.*?)\](.*?)\[\/url\]", r"[\2](http://vndb.org\1)", vn["description"]) # Changes URL tags to match Discord's formatting
-        vn["description"] = re.sub(r"\[i\]|\[/i\]", r"*", vn["description"]) # Changes italics markers to match Discord's formatting
-        vn["description"] = re.sub(r"\[spoiler\]|\[\/spoiler\]", r"\|\|", vn["description"]) # Changes spoiler markers to match Discord's formatting
-        vn["description"] = textwrap.shorten(vn["description"], width=350, placeholder="...")
+        vn["description"] = re.sub(r"\[url=(\/.*?)\](.*?)\[\/url\]", r"[\2](http://vndb.org\1)", vn["description"]) # Changes internal URL tags to match Discord's formatting
+        vn["description"] = re.sub(r"\[url=(.*?)\](.*?)\[\/url\]", r"[\2](\1)", vn["description"]) # Changes external URL tags to match Discord's formatting
+        vn["description"] = vn["description"].replace("[i]", "*").replace("[\i]", "*") # Changes italics tags to match Discord's formatting
+        vn["description"] = vn["description"].replace("[spoiler]", "||").replace("[\spoiler]", "||") # Changes spoiler tags to match Discord's formatting
+        vn["description"] = WebScrapers.shorten(vn["description"], width=500, placeholder="[...]")
+        if vn["description"].count("[i]") != vn["description"].count("[\i]"): # If true, then we have an unclosed italic tag
+            vn["description"] += " [\i]"
+        if vn["description"].count("||") % 2 != 0: # If odd number of spoiler markers, then we have an unclosed spoiler tag
+            vn["description"] += " ||"
 
         developers = ", ".join(developer["name"] for developer in vn["developers"])
         length_hours = "Unknown" if vn["length_minutes"] is None else f"{float(vn['length_minutes'] / 60):.2f} hours"
@@ -301,3 +305,16 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         embed.description = description
 
         await interaction.response.send_message(embed=embed)
+
+    @staticmethod
+    def shorten(text: str, width: int, placeholder: str = "[...]") -> str:
+        """Collapse and truncate the given text to fit in the given width.
+
+        Unlike textwrap.shorten, this function will preserve line breaks."""
+        if len(text) <= width:
+            return text
+        placeholder = " " + placeholder
+        while len(text) + len(placeholder) > width:
+            text = " ".join(text[:width].split(" ")[:-1])
+        text += placeholder
+        return text
