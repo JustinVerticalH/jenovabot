@@ -178,6 +178,9 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
 
         vn, _ = process.extractOne(vn_name, results, processor=lambda vn: vn if vn == vn_name else vn["title"])
 
+        if vn["description"] is None:
+            vn["description"] = ""
+
         vn["description"] = re.sub(r"\[url=(\/.*?)\](.*?)\[\/url\]", r"[\2](http://vndb.org\1)", vn["description"]) # Changes internal URL tags to match Discord's formatting
         vn["description"] = re.sub(r"\[url=(.*?)\](.*?)\[\/url\]", r"[\2](\1)", vn["description"]) # Changes external URL tags to match Discord's formatting
         vn["description"] = vn["description"].replace("[i]", "*").replace("[\i]", "*") # Changes italics tags to match Discord's formatting
