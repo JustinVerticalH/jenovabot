@@ -82,7 +82,8 @@ class EventAlerts(commands.Cog, name="Event Alerts"):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         """Sends an event starting message when an event creator joins a voice channel 30 minutes or less before the event start time."""
-        if (before.channel is None and after.channel is not None): # If member has not joined a voice channel
+        is_joining_voice_channel = before.channel is None and after.channel is not None
+        if not is_joining_voice_channel:
             return
         
         for event in self.yet_to_ping.copy():
