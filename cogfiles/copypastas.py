@@ -6,6 +6,7 @@ from discord.ext import commands
 from ioutils import read_json, write_json
 
 
+@app_commands.guild_only()
 class Copypastas(commands.Cog, name="Message Copypastas"):
     """Send a copypasta whenever a key phrase is found in a message."""
     

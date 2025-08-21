@@ -35,6 +35,7 @@ class ReactionRole(JsonSerializable):
             emoji = discord.PartialEmoji.from_str(json_obj["emoji"])
             return ReactionRole(channel, message, role, emoji)
 
+@app_commands.guild_only()
 class ReactionRoles(commands.Cog, name="Reaction Roles"):
     """Manage ping roles through message reactions."""
 

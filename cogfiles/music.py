@@ -21,6 +21,7 @@ async def setup_hook(self):
 commands.Bot.setup_hook = setup_hook
 
 
+@app_commands.guild_only()
 class Music(commands.Cog, name="Music"):
 
     def __init__(self, bot: commands.Bot):

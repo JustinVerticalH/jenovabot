@@ -118,6 +118,7 @@ class ReminderCancelView(discord.ui.View):
         """Checks whether the callback should be processed."""
         return interaction.user == self.member
 
+@app_commands.guild_only()
 class Reminders(commands.Cog, name="Reminders"):
     """Create and send scheduled reminder messages."""
     

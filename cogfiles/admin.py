@@ -21,6 +21,7 @@ CHANNEL_TYPE_TO_DATABASE_STR = {
     ChannelType.NewThreads: "new_threads_channel_id"
 }
 
+@app_commands.guild_only()
 class Admin(commands.Cog, name="Administrator"):
     """Save settings for your server."""
 

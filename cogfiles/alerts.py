@@ -8,6 +8,7 @@ from discord.utils import format_dt
 MINUTES_BEFORE_EVENT_START_TIME = 30
 
 
+@app_commands.guild_only()
 class EventAlerts(commands.Cog, name="Event Alerts"):
     """Send a timestamped ping message whenever an event is created for a particular role."""
     

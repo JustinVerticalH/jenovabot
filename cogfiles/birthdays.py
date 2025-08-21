@@ -42,6 +42,7 @@ class Birthday(JsonSerializable):
         date = datetime.datetime.strptime(json_obj["date"], "%Y-%m-%d").date()
         return Birthday(user, date)
 
+@app_commands.guild_only()
 class Birthdays(commands.Cog, name="Birthdays"):
     "Send messages on members' birthdays."
     
