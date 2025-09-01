@@ -62,6 +62,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await self.on_ready()
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 1, 31], year: int | None):
         """Saves your birthday. On your birthday, JENOVA will send a happy birthday message."""
         try:
@@ -79,6 +80,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await interaction.response.send_message(f"Added your birthday: {month.name} {ordinal(day)}{'' if year is None else f', {year}'}", ephemeral=True)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def birthdays(self, interaction: discord.Interaction):
         """Lists the next 10 birthdays in this server."""
         # Sort the birthday dates by month and day only, not year

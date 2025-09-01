@@ -64,6 +64,14 @@ class Reminder(JsonSerializable):
 
             return Reminder(author, channel, command_message, original_message_datetime, reminder_datetime, reminder_str, slash_message, subscribers)
 
+    def is_viewable(self, user: discord.Member):
+        """Returns true if the user has permission to view this reminder or the user created this reminder."""
+        return user.guild_permissions.manage_guild or self.channel.permissions_for(user).read_messages or self.author == user
+    
+    def user_will_be_reminded(self, user: discord.Member):
+        """Returns true if the user has subscribed to this reminder or the user created this reminder."""
+        return self.author == user or user in self.subscribers
+
     def copy(self):
         # We need to ensure that different Reminder objects do not point to the same subscribers list
         # This ensures that when the list of subscribers in one Reminder is modified, copies of that Reminder are not also modified (such as Reminders._cached_reminders)
@@ -147,6 +155,7 @@ class Reminders(commands.Cog, name="Reminders"):
 
     @app_commands.command()
     @app_commands.rename(reminder_str="message")
+    @app_commands.guild_only()
     async def remindme(self, interaction: discord.Interaction, reminder_str: str, days: int=0, hours: int=0, minutes: int=0, seconds: int=0):
         """Set a scheduled reminder. JENOVA will ping you once the time has passed."""
         # Calculate the time when the reminder should be sent at, and create a new reminder object with that timestamp
@@ -174,6 +183,7 @@ class Reminders(commands.Cog, name="Reminders"):
         return reminder
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def reminders(self, interaction: discord.Interaction):
         """View scheduled reminders of every server member.""" 
         if len(self.reminders[interaction.guild.id]) == 0:
@@ -186,10 +196,10 @@ class Reminders(commands.Cog, name="Reminders"):
         await interaction.response.send_message(embed=reminder_list, ephemeral=True)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def remindcancel(self, interaction: discord.Interaction):
         """Cancel scheduled reminders."""
-        is_viewable = lambda reminder: interaction.user.guild_permissions.manage_guild or reminder.author == interaction.user
-        filtered_reminders = {reminder for reminder in self.reminders[interaction.guild.id] if is_viewable(reminder)}
+        filtered_reminders = {reminder for reminder in self.reminders[interaction.guild.id] if reminder.is_viewable(interaction.user)}
         
         if len(filtered_reminders) == 0:
             return await interaction.response.send_message("No reminders currently set.", ephemeral=True)
@@ -228,7 +238,7 @@ class Reminders(commands.Cog, name="Reminders"):
             if self.reminders[guild.id] != self._cached_reminders[guild.id]:
                 write_json(guild.id, "reminders", value=[reminder.to_json() for reminder in self.reminders[guild.id]])
                 self._cached_reminders[guild.id] = deepcopy(self.reminders[guild.id])
-    
+
 def deepcopy(reminders: set[Reminder]) -> set[Reminder]:
     copied_reminders = set()
     for reminder in reminders:

@@ -49,6 +49,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     
     @app_commands.command()
     @app_commands.rename(emoji_str="emoji")
+    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
     async def reactionrole(self, interaction: discord.Interaction, role: discord.Role, emoji_str: str, message_link: str):
         "Attaches a reaction role to a message. When a user reacts to the message with the given emoji, they will receive the role."
@@ -82,6 +83,7 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
+    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
     async def reactionroleremove(self, interaction: discord.Interaction, role: discord.Role):
         "Removes a reaction role message."

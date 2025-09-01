@@ -53,7 +53,8 @@ class AnnouncementConfig:
         
         return True
 
-class Announcements(commands.Cog, name="Periodic Announcements"):
+@app_commands.guild_only()
+class Announcements(commands.GroupCog, group_name="announcements"):
     """Periodically send specific messages in certain channels at scheduled times."""
     
     def __init__(self, bot: commands.Bot):

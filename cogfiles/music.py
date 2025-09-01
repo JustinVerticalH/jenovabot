@@ -78,6 +78,7 @@ class Music(commands.Cog, name="Music"):
                 await self.cleanup(self.node.get_player(before.channel.guild))
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def play(self, interaction: discord.Interaction, query: str, position: app_commands.Range[int, 1] | None):
         """Searches and plays a song from a given query."""
         
@@ -154,6 +155,7 @@ class Music(commands.Cog, name="Music"):
             await player.play(player.queue.get(), paused=False)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def disconnect(self, interaction: discord.Interaction):
         """Disconnects the player from the voice channel and clears its queue."""
 
@@ -186,6 +188,7 @@ class Music(commands.Cog, name="Music"):
                 await voice_client.disconnect(force=True)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def skip(self, interaction: discord.Interaction):
         """Skips the currently playing track. If there is another track in the queue, plays that next track."""
 
@@ -204,6 +207,7 @@ class Music(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def queue(self, interaction: discord.Interaction):
         """Lists the queue of tracks to play."""
 
@@ -229,6 +233,7 @@ class Music(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def pause(self, interaction: discord.Interaction):
         """Pauses the currently playing track, if any."""        
 
@@ -245,6 +250,7 @@ class Music(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def stop(self, interaction: discord.Interaction):
         """Stops the player and clears the queue without disconnecting the bot from the voice channel."""
 
@@ -265,6 +271,7 @@ class Music(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def remove(self, interaction: discord.Interaction, track_number: int):
         """Removes the track at a given position from the queue."""
 
@@ -286,6 +293,7 @@ class Music(commands.Cog, name="Music"):
             del player.queue[track_number-2]
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def nowplaying(self, interaction: discord.Interaction):
         """Displays the progress of the currently playing track."""
 
@@ -310,6 +318,7 @@ class Music(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def loop(self, interaction: discord.Interaction):
         """Toggles whether or not the current track is looping."""
         
@@ -330,6 +339,7 @@ class Music(commands.Cog, name="Music"):
         # playlist.url defaults to None, so we have to pass in the playlist_url from play()
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def seek(self, interaction: discord.Interaction, hours: int=0, minutes: int=0, seconds: int=0):
         """Jumps to the given time in the currently playing song."""
 

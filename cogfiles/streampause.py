@@ -24,6 +24,7 @@ class StreamPause(commands.Cog, name="Stream Pause"):
             await self.attempt_to_finish_streampause(member, voice_channel)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def streampause(self, interaction: discord.Interaction):
         """Set up a streampause message for voice channel members to react to."""
 

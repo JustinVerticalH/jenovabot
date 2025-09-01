@@ -38,6 +38,7 @@ class Copypastas(commands.Cog, name="Message Copypastas"):
                 await message.channel.send(self.copypastas[phrase])
 
     @app_commands.command()
+    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
     async def togglecopypastas(self, interaction: discord.Interaction, toggle: bool):
         """Toggle whether the bot will send a copypasta when a message contains a certain phrase."""

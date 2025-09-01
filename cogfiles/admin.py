@@ -56,6 +56,7 @@ class Admin(commands.Cog, name="Administrator"):
             await interaction.response.send_message(f"Synced {len(synced)} command(s).", ephemeral=True)
 
     @app_commands.command()
+    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
     async def channel(self, interaction: discord.Interaction, channel_type: ChannelType, channel: discord.TextChannel | discord.ForumChannel):
         """Set which channel to send certain automated messages (announcements, birthdays, daily messages, events, new threads, etc)."""
