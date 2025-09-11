@@ -35,7 +35,8 @@ class ReactionRole(JsonSerializable):
             emoji = discord.PartialEmoji.from_str(json_obj["emoji"])
             return ReactionRole(channel, message, role, emoji)
 
-class ReactionRoles(commands.Cog, name="Reaction Roles"):
+@app_commands.guild_only()
+class ReactionRoles(commands.GroupCog, name="reactionrole"):
     """Manage ping roles through message reactions."""
 
     def __init__(self, bot: commands.Bot):
@@ -49,9 +50,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
     
     @app_commands.command()
     @app_commands.rename(emoji_str="emoji")
-    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def reactionrole(self, interaction: discord.Interaction, role: discord.Role, emoji_str: str, message_link: str):
+    async def add(self, interaction: discord.Interaction, role: discord.Role, emoji_str: str, message_link: str):
         "Attaches a reaction role to a message. When a user reacts to the message with the given emoji, they will receive the role."
         emoji = discord.PartialEmoji.from_str(emoji_str)
 
@@ -83,9 +83,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
-    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def reactionroleremove(self, interaction: discord.Interaction, role: discord.Role):
+    async def remove(self, interaction: discord.Interaction, role: discord.Role):
         "Removes a reaction role message."
         old_reactionrole = next((reactionrole for reactionrole in self.reactionroles[interaction.guild.id] if reactionrole.role == role), None)
         if old_reactionrole is None:
@@ -98,8 +97,8 @@ class ReactionRoles(commands.Cog, name="Reaction Roles"):
         embed = RandomColorEmbed(title="Reaction Role Removed", description=f"\nThe reaction role for {role.mention} at {old_reactionrole.message.jump_url} has been removed.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
-    @reactionrole.error
-    @reactionroleremove.error
+    @add.error
+    @remove.error
     async def permissions_or_channel_fail(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         """Handles errors for the given command (insufficient permissions, etc)."""
         if isinstance(error, app_commands.errors.MissingPermissions):
