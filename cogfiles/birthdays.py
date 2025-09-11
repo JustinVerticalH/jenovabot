@@ -42,7 +42,8 @@ class Birthday(JsonSerializable):
         date = datetime.datetime.strptime(json_obj["date"], "%Y-%m-%d").date()
         return Birthday(user, date)
 
-class Birthdays(commands.Cog, name="Birthdays"):
+@app_commands.guild_only()
+class Birthdays(commands.GroupCog, name="birthday"):
     "Send messages on members' birthdays."
     
     def __init__(self, bot: commands.Bot):
@@ -62,8 +63,7 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await self.on_ready()
 
     @app_commands.command()
-    @app_commands.guild_only()
-    async def birthday(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 1, 31], year: int | None):
+    async def add(self, interaction: discord.Interaction, month: Month, day: app_commands.Range[int, 1, 31], year: int | None):
         """Saves your birthday. On your birthday, JENOVA will send a happy birthday message."""
         try:
             date = datetime.date(year=datetime.MAXYEAR if year is None else year, month=month.value, day=day) # Setting the year to MAXYEAR represents no year provided
@@ -80,8 +80,26 @@ class Birthdays(commands.Cog, name="Birthdays"):
         await interaction.response.send_message(f"Added your birthday: {month.name} {ordinal(day)}{'' if year is None else f', {year}'}", ephemeral=True)
 
     @app_commands.command()
-    @app_commands.guild_only()
-    async def birthdays(self, interaction: discord.Interaction):
+    async def remove(self, interaction: discord.Interaction, user: discord.Member = None):
+        """Removes a birthday from the server's list."""
+        if self.birthdays.get(interaction.guild.id) is None:
+            return await interaction.response.send_message("No birthdays are saved in this server.", ephemeral=True)
+        if user is not None and not interaction.user.guild_permissions.manage_guild:
+            return await interaction.response.send_message("You don't have permission to remove other users' birthdays.", ephemeral=True)
+
+        birthday = next((b for b in self.birthdays[interaction.guild.id] if b.user == (interaction.user if user is None else user)), None)
+        if birthday is None:
+            return await interaction.response.send_message("This user doesn't have a birthday saved in this server.", ephemeral=True)
+
+        self.birthdays[interaction.guild.id].remove(birthday)
+        write_json(interaction.guild.id, "birthdays", value=[birthday.to_json() for birthday in self.birthdays[interaction.guild.id]])
+        if user is None:
+            await interaction.response.send_message("Removed your birthday.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"Removed {user.mention}'s birthday.", ephemeral=True)
+
+    @app_commands.command()
+    async def list(self, interaction: discord.Interaction):
         """Lists the next 10 birthdays in this server."""
         # Sort the birthday dates by month and day only, not year
         # Split the dates into two groups: dates that have already happened this year, and dates that haven't
