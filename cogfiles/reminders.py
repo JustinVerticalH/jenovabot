@@ -184,15 +184,16 @@ class Reminders(commands.Cog, name="Reminders"):
 
     @app_commands.command()
     @app_commands.guild_only()
-    async def reminders(self, interaction: discord.Interaction):
-        """View scheduled reminders of every server member.""" 
-        if len(self.reminders[interaction.guild.id]) == 0:
-            return await interaction.response.send_message("No reminders currently set.", ephemeral=True)
+    @app_commands.describe(only_reminders_for_me="Only show reminders that will ping you")
+    async def reminders(self, interaction: discord.Interaction, only_reminders_for_me: bool | None = None):
+        """View scheduled reminders in this server.""" 
 
-        reminder_list = RandomColorEmbed(
-            title="Scheduled Reminders",
-            description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted(self.reminders[interaction.guild.id], key=lambda r: r.reminder_datetime.timestamp()))])
-        )
+        reminders = sorted(self.reminders[interaction.guild.id], key=lambda r: r.reminder_datetime.timestamp())
+        reminders = {reminder for reminder in reminders if reminder.is_viewable(interaction.user)}
+        if only_reminders_for_me:
+            reminders = {reminder for reminder in reminders if reminder.user_will_be_reminded(interaction.user)}
+
+        reminder_list = RandomColorEmbed(title="Scheduled Reminders", description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(reminders)]))
         await interaction.response.send_message(embed=reminder_list, ephemeral=True)
 
     @app_commands.command()
