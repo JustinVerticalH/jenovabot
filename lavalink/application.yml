@@ -20,6 +20,13 @@ plugins:
       # Initialization is skipped automatically if a valid refresh token is supplied. Leave this commented if you're
       # completing the OAuth flow for the first time/do not have a refresh token.
       skipInitialization: true
+    # The clients to use for track loading. See below for a list of valid clients.
+    # Clients are queried in the order they are given (so the first client is queried first and so on...)
+    clients:
+      - MUSIC
+      - ANDROID_VR
+      - WEB
+      - WEBEMBEDDED
 
 lavalink:
   plugins:
@@ -30,13 +37,6 @@ lavalink:
         allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
         allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
         allowDirectPlaylistIds: true # Whether just playlist IDs can match. If false, only complete URLs will be loaded.
-        # The clients to use for track loading. See below for a list of valid clients.
-        # Clients are queried in the order they are given (so the first client is queried first and so on...)
-        clients:
-          - MUSIC
-          - ANDROID_VR
-          - WEB
-          - WEBEMBEDDED
   server:
     password: "jenovabot"
     sources:
@@ -72,6 +72,9 @@ lavalink:
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
     gc-warnings: true
+    youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
+      email: ${YOUTUBE_EMAIL} # Email of Google account
+      password: ${YOUTUBE_PASSWORD} # Password of Google account
 
 metrics:
   prometheus:
