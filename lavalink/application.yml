@@ -24,10 +24,14 @@ plugins:
     # Clients are queried in the order they are given (so the first client is queried first and so on...)
     clients:
       - TVHTML5EMBEDDED
+      - TV
       - MUSIC
       - ANDROID_VR
       - WEB
       - WEBEMBEDDED
+    # YouTube constantly changes a hidden code needed to play videos. 
+    remoteCipher:
+      url: "https://cipher.kikkia.dev/"
 
 lavalink:
   plugins:
@@ -73,9 +77,6 @@ lavalink:
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
     gc-warnings: true
-    youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
-      email: ${YOUTUBE_EMAIL} # Email of Google account
-      password: ${YOUTUBE_PASSWORD} # Password of Google account
 
 metrics:
   prometheus:
