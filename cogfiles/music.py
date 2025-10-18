@@ -346,4 +346,6 @@ class Music(commands.GroupCog, group_name="music"):
         formatted_position = f"Progress: {position}/{duration}" 
         description = f"{await self.format_track(player.current)}\n{formatted_position}"
         embed = RandomColorEmbed(title="Seeking", description=description)
+        video_thumbnail = f"https://img.youtube.com/vi/{track.identifier}/hqdefault.jpg"
+        embed.set_thumbnail(url=video_thumbnail)
         await interaction.response.send_message(embed=embed)
