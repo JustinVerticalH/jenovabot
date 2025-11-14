@@ -133,11 +133,13 @@ class ReactionRoles(commands.GroupCog, name="reactionrole"):
         if member.bot:
             return
 
-        await member.add_roles(role)
+        try:
+            await member.add_roles(role)
+        except discord.errors.Forbidden:
+            await member.send(f"I do not have permission to assign you the **{role.name}** role in **{guild.name}**.\nMake sure that I have the Manage Roles permission and that my highest role is above the **{role.name}** role.")
+            return
 
-        if member.dm_channel is None:
-            await member.create_dm()
-        await member.dm_channel.send(f"You now have the **{role.name}** role in **{guild.name}**.")
+        await member.send(f"You now have the **{role.name}** role in **{guild.name}**.")
     
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -152,11 +154,13 @@ class ReactionRoles(commands.GroupCog, name="reactionrole"):
         if member.bot:
             return
 
-        await member.remove_roles(role)
+        try:
+            await member.remove_roles(role)
+        except discord.errors.Forbidden:
+            await member.send(f"I do not have permission to remove the **{role.name}** role in **{guild.name}**.\nMake sure that I have the Manage Roles permission and that my highest role is above the **{role.name}** role.")
+            return
 
-        if member.dm_channel is None:
-            await member.create_dm()
-        await member.dm_channel.send(f"You no longer have the **{role.name}** role in **{guild.name}**.")
+        await member.send(f"You no longer have the **{role.name}** role in **{guild.name}**.")
     
     def get_role(self, payload: discord.RawReactionActionEvent) -> discord.Role | None:
         """Gets the role that should be given/removed to the user on a given reaction.
