@@ -17,6 +17,7 @@ from enum import Enum
 
 
 ITAD_API_KEY = os.getenv("ITAD_API_KEY")
+EBAY_TOKEN = os.getenv("EBAY_TOKEN")
 EBAY_APP_NAME = os.getenv("EBAY_APP_NAME")
 
 
@@ -266,44 +267,39 @@ class WebScrapers(commands.Cog, name="Web Scrapers"):
         """Search eBay for listings matching the provided search.
         This command retrives the first 5 results of a search on eBay."""
         async with aiohttp.ClientSession() as session:
-            api = "https://svcs.ebay.com/services/search/FindingService/v1" \
-            f"?OPERATION-NAME=findItemsByKeywords&SECURITY-APPNAME={EBAY_APP_NAME}" \
-            f"&REST-PAYLOAD&RESPONSE-DATA-FORMAT=JSON&keywords={search}"
-            async with session.get(api) as response:
+            headers = {"Authorization": f"Bearer {EBAY_TOKEN}", "Content-Type": "application/json"} 
+            api = f"https://api.ebay.com/buy/browse/v1/item_summary/search?q={search}&limit=5&filter=buyingOptions:{{AUCTION|FIXED_PRICE}}"
+            async with session.get(api, headers=headers) as response:
                 content = await response.read()
                 content = json.loads(content)
 
-        search_result = content["findItemsByKeywordsResponse"][0]["searchResult"][0]
-        if search_result["@count"] == "0":
+        items = content["itemSummaries"]
+        if len(items) == 0:
             return await interaction.response.send_message("Could not find any search results.", ephemeral=True)
 
-        url = content["findItemsByKeywordsResponse"][0]["itemSearchURL"][0]
-        embed = RandomColorEmbed(title=f"eBay: {search}", url=url)
+        embed = RandomColorEmbed(title=f"eBay: {search}")
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/EBay_logo.png/800px-EBay_logo.png")
 
         description = ""
         # Iterate through the first 5 results, and extract information about each. 
-        for result in content["findItemsByKeywordsResponse"][0]["searchResult"][0]["item"][:5]:
-            title = result["title"][0]
-            url = result["viewItemURL"][0]
-            price = f"{float(result['sellingStatus'][0]['convertedCurrentPrice'][0]['__value__']):.2f}"
+        for item in items[:5]:
+            title = item["title"]
+            url = item["itemWebUrl"]
                     
             # Each listing is an auction and/or fixed price. Display the correct price.
-            listing_type = result["listingInfo"][0]["listingType"][0]
-            if listing_type == "Auction":
-                price_info = f"Current Bid: ${price}"
-            elif listing_type == "FixedPrice":
-                price_info = f"Buy It Now: ${price}"
-            elif listing_type == "AuctionWithBIN":
-                buy_now_price = f"{float(result['listingInfo'][0]['convertedBuyItNowPrice'][0]['__value__']):.2f}"
-                price_info = f"Current Bid: ${price}\nBuy It Now: ${buy_now_price}"
-            else:
-                price_info = f"${price}"
+            listing_types = item["buyingOptions"]
+            price_info = []
+            end_time_info = ""
+            if "AUCTION" in listing_types:
+                price = f"{float(item['currentBidPrice']['value']):.2f}"
+                price_info.append(f"Current Bid: ${price}")
+                end_time_info = f"\nEnds {format_dt(parser.parse(item['itemEndDate']), style ='R')}"
+            if "FIXED_PRICE" in listing_types:
+                price = f"{float(item['price']['value']):.2f}"
+                price_info.append(f"Buy It Now: ${price}")
+            price_info = " | ".join(price_info)
 
-            end_time = parser.parse(result["listingInfo"][0]["endTime"][0])
-            end_time = format_dt(end_time, style='R')
-
-            description += f"**[{title}]({url})**\n{price_info}\nEnds {end_time}\n\n"
+            description += f"**[{title}]({url})**\n{price_info}{end_time_info}\n\n"
 
         embed.description = description
 
