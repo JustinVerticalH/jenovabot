@@ -54,11 +54,18 @@ async def initialize_from_json(bot: commands.Bot, settings_class: JsonSerializab
     """Initializes a dictionary mapping guild ID to a set of JSON-serializable objects 
     by reading the JSON file and deserializing the objects."""
 
+    async def from_json(json_str: str) -> JsonSerializable: # Handles exceptions during deserialization
+        try:
+            await settings_class.from_json(bot, json_str)
+        except discord.errors.Forbidden:
+            return None
+
     for guild in bot.guilds:
         if read_json(guild.id, key) is None:
             write_json(guild.id, key, value={})
         try:
-            guild_settings[guild.id] = {await settings_class.from_json(bot, json_str) for json_str in read_json(guild.id, key)}
+            guild_settings[guild.id] = {await from_json(json_str) for json_str in read_json(guild.id, key)}
+            guild_settings[guild.id] = {guild_setting for guild_setting in guild_settings[guild.id] if guild_setting is not None}
         except json.JSONDecodeError as e:
             print(e)
         except discord.errors.Forbidden as e:
