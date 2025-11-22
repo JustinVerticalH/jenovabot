@@ -1,6 +1,7 @@
 import json, os
 from abc import ABC, abstractmethod
 from discord import Embed, Color
+import discord
 from discord.ext import commands
 
 
@@ -59,4 +60,6 @@ async def initialize_from_json(bot: commands.Bot, settings_class: JsonSerializab
         try:
             guild_settings[guild.id] = {await settings_class.from_json(bot, json_str) for json_str in read_json(guild.id, key)}
         except json.JSONDecodeError as e:
+            print(e)
+        except discord.errors.Forbidden as e:
             print(e)
