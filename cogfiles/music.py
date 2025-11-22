@@ -13,12 +13,12 @@ from ioutils import RandomColorEmbed
 LAVALINK_HOST = f"http://{os.getenv('LAVALINK_HOST')}:{os.getenv('LAVALINK_PORT')}"
 LAVALINK_PASS = os.getenv("LAVALINK_PASS")
 
-async def setup_hook(self):
+async def connect_to_node(self):
     nodes = [wavelink.Node(uri=LAVALINK_HOST, client=self, password=LAVALINK_PASS)]
     # cache_capacity is EXPERIMENTAL. Turn it off by passing None
     await wavelink.Pool.connect(nodes=nodes, client=self, cache_capacity=None)
 
-commands.Bot.setup_hook = setup_hook
+commands.Bot.setup_hook = connect_to_node
 
 
 @app_commands.guild_only()
@@ -68,6 +68,11 @@ class Music(commands.GroupCog, group_name="music"):
 
             embed = RandomColorEmbed(title="Queue Finished")
             return await channel.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_wavelink_node_disconnected(self, payload): # Reconnect to the node if disconnected
+        print("Node disconnected! Reconnecting...")
+        await self.bot.connect_to_node()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
