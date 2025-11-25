@@ -192,7 +192,8 @@ class Reminders(commands.Cog, name="Reminders"):
         if only_reminders_for_me:
             reminders = {reminder for reminder in reminders if reminder.user_will_be_reminded(interaction.user)}
 
-        reminder_list = RandomColorEmbed(title="Scheduled Reminders", description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(reminders)]))
+        sorted_reminders = sorted(reminders, key=lambda r: r.reminder_datetime.timestamp())
+        reminder_list = RandomColorEmbed(title="Scheduled Reminders", description='\n'.join([f"{i+1}. {reminder}" for i, reminder in enumerate(sorted_reminders)]))
         await interaction.response.send_message(embed=reminder_list, ephemeral=True)
 
     @app_commands.command()
