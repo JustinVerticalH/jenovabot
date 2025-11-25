@@ -59,6 +59,7 @@ async def initialize_from_json(bot: commands.Bot, settings_class: JsonSerializab
             write_json(guild.id, key, value={})
         try:
             guild_settings[guild.id] = {await settings_class.from_json(bot, json_str) for json_str in read_json(guild.id, key)}
+            guild_settings[guild.id] = {setting for setting in guild_settings[guild.id] if setting is not None} # Clean invalid entries before they cause errors later
         except json.JSONDecodeError as e:
             print(e)
         except discord.errors.Forbidden as e:

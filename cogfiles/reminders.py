@@ -50,7 +50,10 @@ class Reminder(JsonSerializable):
     @staticmethod
     async def from_json(bot: commands.Bot, json_obj: dict[str, int | float | str]):
         """Convert a JSON dictionary to a Reminder object."""
-        channel = await bot.fetch_channel(json_obj["channel_id"])
+        try:
+            channel = await bot.fetch_channel(json_obj["channel_id"])
+        except (discord.errors.NotFound, discord.errors.Forbidden):
+            return None
         
         if channel is not None:
             command_message = None if json_obj["command_message_id"] < 0 else await channel.fetch_message(json_obj["command_message_id"])
